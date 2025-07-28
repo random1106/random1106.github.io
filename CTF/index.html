@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CTF</title>
+  <style>
+    :root {
+      --black: #0d0d0d;
+      --gray-dark: #1a1a1a;
+      --gray-medium: #2b2b2b;
+      --blue-accent: #3b82f6;
+      --white: #f9fafb;
+      --muted: #9ca3af;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--black);
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--white);
+      line-height: 1.6;
+      overflow-x: hidden;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .title {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--muted);
+    }
+
+    .section {
+      max-width: 800px;
+      margin: 3rem auto;
+      background-color: var(--gray-dark);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+    }
+
+    .section h2 {
+      font-size: 1.6rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--gray-medium);
+      padding-bottom: 0.5rem;
+    }
+
+    .ctf-entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: var(--gray-medium);
+      margin-bottom: 1rem;
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      transition: background 0.3s ease;
+    }
+
+    .ctf-entry:hover {
+      background-color: var(--blue-accent);
+      color: black;
+    }
+
+    .ctf-entry .name {
+      font-weight: 600;
+    }
+
+    .ctf-entry .rank {
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .cta {
+      display: block;
+      margin: 3rem auto 0 auto;
+      text-align: center;
+    }
+
+    .cta a {
+      background: var(--blue-accent);
+      color: black;
+      padding: 0.8rem 1.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s ease;
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .cta a:hover {
+      background: #60a5fa;
+    }
+
+    .intro-box {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 1.5rem;
+        background-color: #1a1a1a; 
+        border-radius: 10px;
+    }
+
+    .intro-box p {
+        color: #f1f1f1;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .intro-box .team-link {
+        color: #3b82f6;
+        text-decoration: none;
+    }
+
+    .intro-box .team-link:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .ctf-entry {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+      }
+
+      .ctf-entry .rank {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 class="title">CTF Page</h1>
+    
+  </header>
+  <div class="intro-box">
+  
+    Hi, this is the CTF page of Yier Lin. I use this page to record writeups of the CTFs I have participated in, and maybe some blogs about blockchain and cybersecurity in the future. 
+    Here are all the CTFs I have taken part in as a member of
+    <a href="https://ctftime.org/team/380591/" target="_blank" rel="noopener" class="team-link">
+      Capablanca.
+    </a>
+    
+  </div>
+
+  <section class="section">
+    <h2>🏆 Recent CTF Results</h2>
+
+    <div class="ctf-entry">
+      <span class="name">DownUnderCTF 2025</span>
+      <span class="rank">118th / 1667 teams</span>
+    </div>
+    <div class="ctf-entry">
+      <span class="name">L3akCTF 2025</span>
+      <span class="rank">149th / 1587 teams</span>
+    </div>
+    <div class="ctf-entry">
+      <span class="name">smileyCTF 2025</span>
+      <span class="rank">77th / 1090 teams</span>
+    </div>
+    
+  </section>
+
+  <div class="cta">
+    <a href="writeups.html">📖 View Writeups</a>
+  </div>
+
+</body>
+</html>
