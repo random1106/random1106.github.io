@@ -1,0 +1,113 @@
+:root {
+  --bg: #0d0f12;
+  --fg: #e6edf3;
+
+  --math-color: #7cffb3;
+  --sec-color: #ff2d55;
+}
+
+body {
+  margin: 0;
+  background: #0d0f12;
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Fira Code", monospace;
+  line-height: 1.65;
+}
+
+.container {
+  max-width: 820px;
+  margin: 64px auto;
+  padding: 0 24px;
+  text-align: left;
+}
+
+h1 {
+  margin: 0 0 14px;
+  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+  font-weight: 700;
+  color: #fff;
+}
+
+p {
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+  color: var(--fg);
+}
+
+/* 链接按钮基础样式 */
+a {
+  display: inline-block;
+  margin-right: 12px;
+  margin-top: 12px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--fg);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+}
+
+/* Mathematics 按钮：绿色边框 */
+a[href*="math"] {
+  border: 2px solid var(--math-color);
+}
+a[href*="math"]:hover {
+  color: var(--math-color);
+  background: rgba(124, 255, 179, 0.08);
+  box-shadow: 0 0 12px rgba(124, 255, 179, 0.5);
+}
+
+/* Security 按钮：红色边框 */
+a[href*="security"] {
+  border: 2px solid var(--sec-color);
+}
+a[href*="security"]:hover {
+  color: var(--sec-color);
+  background: rgba(255, 45, 85, 0.08);
+  box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
+}
+
+/* 普通正文链接：不加 padding/margin，不改 display */
+.container p a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+  margin: 0;
+  display: inline;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* 只给按钮样式 */
+.links .btn {
+  display: inline-block;
+  margin-right: 12px;
+  margin-top: 8px;        /* 想更紧凑可再小一点或设为0 */
+  padding: 0.5rem 1rem;   /* 想更紧凑可再小一点 */
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--fg);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(4px);
+  transition: all .3s ease;
+}
+
+/* 保留你对两类按钮的配色 */
+.links .btn[href*="math"]     { border: 2px solid var(--math-color); }
+.links .btn[href*="math"]:hover {
+  color: var(--math-color);
+  background: rgba(124,255,179,.08);
+  box-shadow: 0 0 12px rgba(124,255,179,.5);
+}
+.links .btn[href*="security"] { border: 2px solid var(--sec-color); }
+.links .btn[href*="security"]:hover {
+  color: var(--sec-color);
+  background: rgba(255,45,85,.08);
+  box-shadow: 0 0 12px rgba(255,45,85,.5);
+}
+

