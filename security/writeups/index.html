@@ -11,7 +11,6 @@
   <div class="wrap" id="app">
     <header>
       <h1>CTF Writeups</h1>
-      <p class="lead">A minimal index of my CTF notes and solutions — clean and distraction‑free.</p>
     </header>
 
     <hr />
@@ -28,7 +27,7 @@
     // Add entries by pushing objects into ENTRIES.
     // Fields: title, event, date (YYYY-MM-DD), link, tags: [..]
     const ENTRIES = [
-      {title:'Sekai Meme Launcher Writeup', event:'Sekai CTF', date:'2025-08-16', link:'writeups/memelauncher.html', tags:['blockchain']},
+      {title:'Sekai Meme Launcher Writeup', event:'Sekai CTF', date:'2025-08-16', link:'./memelauncher.html', tags:['blockchain']},
       {title:'Dinosaur Park', event:'WWCTF', date:'2025-07-26', link:'#', tags:['blockchain']},
       {title:'Solidity Jail 2', event:'WWCTF', date:'2025-07-26', link:'#', tags:['blockchain']},
       {title:'Solidity Jail 1', event:'WWCTF', date:'2025-07-26', link:'#', tags:['blockchain']},
@@ -71,7 +70,7 @@
         return `
           <details ${year === mostRecentYear ? 'open' : ''}>
             <summary>
-              <h2 id="y${year}" style="margin:0">${year} <a class="hash" href="#y${year}">⌗</a></h2>
+              <h2 id="y${year}" style="margin:0">${year}</h2>
               <span class="count">${items.length} item${items.length>1?'s':''}</span>
             </summary>
             ${itemsHTML}
