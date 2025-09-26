@@ -5,31 +5,55 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Security — Yier Lin</title>
   <link rel="stylesheet" href="/assets/css/writeup.css">
+  <style>
+    /* 仅当 writeup.css 没有这些时，用作兜底 */
+    .site-header{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.5rem;}
+    .logo h1{margin:0;}
+    .lead{margin:0;font-size:0.9rem;color:#666;}
+    .navbar{display:flex;gap:1.5rem;font-size:0.95rem;margin:0;}
+    .navbar a{display:inline-block;text-decoration:none;color:#444;font-weight:500;}
+    .navbar a:hover{color:#000;border-bottom:2px solid #000;}
+    .wrap{max-width:920px;margin:0 auto;padding:0 16px;}
+    .tag-section h2,.news-panel h2{margin-top:1.5rem;}
+    @media (max-width:600px){
+      .site-header{flex-wrap:wrap;}
+      .navbar{width:100%;justify-content:flex-end;margin-top:0.5rem;}
+    }
+  </style>
 </head>
+
 <body>
   <div class="wrap">
-    <header>
-      <h1>Yier Lin</h1>
-      <p class="lead">Security researcher & CTF player. Focused on blockchain & cryptography.</p>
+    <header class="site-header">
+      <div class="logo">
+        <h1>Yier Lin</h1>
+        <p class="lead">Security researcher & CTF player. Focused on blockchain & cryptography.</p>
+      </div>
+
+      <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/index.html">Security</a>
+        <a href="/math/index.html">Math</a>
+      </nav>
     </header>
 
-    This page is still under construction. For the old writeup, check my <a href="https://medium.com/@random1106">medium</a>.
+    <p>This page is still under construction. For the old writeup, check my
+      <a href="https://medium.com/@random1106" target="_blank" rel="noopener">medium</a>.
+    </p>
     <hr />
 
     <section aria-label="Sections" class="tag-section">
-        <h2>New writeups</h2>
-        <div class="tag-row" id="newsRow">
-        <a class="badge" href="notes/AES.html"   data-date="2025-09-09">AES encryption attack summary</a>
-        <a class="badge" href="writeups/memelauncher.html"   data-date="2025-08-23">Sekai CTF Memelauncher writeup</a>
+      <h2>New writeups</h2>
+      <div class="tag-row" id="newsRow">
+        <a class="badge" href="notes/AES.html" data-date="2025-09-09">AES encryption attack summary</a>
+        <a class="badge" href="writeups/memelauncher.html" data-date="2025-08-23">Sekai CTF Memelauncher writeup</a>
         <a class="badge" href="others/chainlink.html" data-date="2025-08-16">Won Top 3 in the Chainlink Reward competitive audit</a>
-
-        </div>
+      </div>
     </section>
 
     <main>
-      <!-- CTF News -->
       <section aria-label="CTF">
-        <h2>CTF that I participated</h2>
+        <h2>CTFs I participated in</h2>
 
         <!-- Top 3 -->
         <ul id="ctfTop" class="list"></ul>
@@ -55,18 +79,26 @@
         return [
           { event:"Alfa Surfing CTF", link:"https://ctftime.org/event/2935", date:"2025-09-12", team:"team: Project Sekai", placement:"ranked: 6/348"},
           { event:"ImaginaryCTF 2025", link:"https://ctftime.org/event/2799", date:"2025-09-05", team:"team: Capablanca", placement:"ranked: 60/1414"},
-          { event:"corCTF 2025", link:"https://ctftime.org/event/2763", date:"2025-08-30", team:"team: PIGSEKAI", placement:"ranked:2/474"},
-          { event:"SekaiCTF 2025", link:"https://ctftime.org/event/2683", date:"2025-08-16", team:"team: Capablanca", placement:"ranked:88/1054"},
-          { event:"DownUnderCTF 2025", link:"https://ctftime.org/event/2669", date:"2025-07-18", team:"team: Capablanca", placement:"ranked:118/1664"},
-          { event:"SmileyCTF 2025", link:"https://ctftime.org/event/2591", date:"2025-06-14", team:"team: Capablanca", placement:"ranked:77/1087"}
+          { event:"corCTF 2025", link:"https://ctftime.org/event/2763", date:"2025-08-30", team:"team: PIGSEKAI", placement:"ranked: 2/474"},
+          { event:"SekaiCTF 2025", link:"https://ctftime.org/event/2683", date:"2025-08-16", team:"team: Capablanca", placement:"ranked: 88/1054"},
+          { event:"DownUnderCTF 2025", link:"https://ctftime.org/event/2669", date:"2025-07-18", team:"team: Capablanca", placement:"ranked: 118/1664"},
+          { event:"SmileyCTF 2025", link:"https://ctftime.org/event/2591", date:"2025-06-14", team:"team: Capablanca", placement:"ranked: 77/1087"}
         ];
       }
     }
 
+    // 提取 "ranked: 6/348" 的名次数字 6；取不到时返回很大的值，避免排到前面
+    function parsePlacementRank(s){
+      const m = String(s||'').match(/(\d+)\s*\/\s*\d+/);
+      return m ? parseInt(m[1], 10) : Number.POSITIVE_INFINITY;
+    }
+
     function sortAll(arr){
       return [...arr].sort((a,b)=>{
-        if(a.placement !== b.placement) return a.placement - b.placement;
-        return (b.score||0) - (a.score||0);
+        const ra = parsePlacementRank(a.placement);
+        const rb = parsePlacementRank(b.placement);
+        if (ra !== rb) return ra - rb;               // 名次小 → 排前
+        return (b.score||0) - (a.score||0);          // 分数高 → 排前
       });
     }
 
@@ -77,10 +109,10 @@
         const li = document.createElement('li');
         li.innerHTML = `
           <a class="item-title" href="${it.link||'#'}" target="_blank" rel="noopener">${it.event}</a>
-          <span class="badge">${it.placement}</span>
+          <span class="badge">${it.placement||''}</span>
           ${it.tag ? `<span class="badge">#${it.tag}</span>` : ''}
           ${it.score ? `<span class="badge">${it.score}</span>` : ''}
-          <div class="meta">${it.date} • ${it.team||'Team'}</div>
+          <div class="meta">${it.date||''} • ${it.team||'Team'}</div>
         `;
         ul.appendChild(li);
       }
@@ -99,34 +131,34 @@
 
   <script>
     (function(){
-    const row = document.getElementById('newsRow');
-    if(!row) return;
+      const row = document.getElementById('newsRow');
+      if(!row) return;
 
-    // 拿到所有 badge，按 data-date 从新到旧排序
-    const items = Array.from(row.querySelectorAll('a.badge'));
-    items.sort((a,b)=>{
+      // 按 data-date 从新到旧排序
+      const items = Array.from(row.querySelectorAll('a.badge'));
+      items.sort((a,b)=>{
         const da = new Date(a.dataset.date || 0);
         const db = new Date(b.dataset.date || 0);
         return db - da; // 新 → 旧
-    });
+      });
 
-    // 仅保留最近 3 条
-    row.innerHTML = '';
-    items.slice(0,3).forEach(el=> row.appendChild(el));
+      // 仅保留最近 3 条
+      row.innerHTML = '';
+      items.slice(0,3).forEach(el=> row.appendChild(el));
     })();
   </script>
 
   <script>
     (function(){
-    // 给每个带 data-date 的 badge，在标题尾部添加一个小号日期
-    document.querySelectorAll('.tag-row a.badge[data-date]').forEach(a=>{
+      // 给每个带 data-date 的 badge，在标题尾部添加一个小号日期
+      document.querySelectorAll('.tag-row a.badge[data-date]').forEach(a=>{
         const d = a.dataset.date;
         if(!d) return;
         const s = document.createElement('span');
         s.className = 'date';
         s.textContent = `(${d})`; // 想换成 ·2025-09-09 就写 ` · ${d}`
         a.appendChild(s);
-    });
+      });
     })();
   </script>
 
