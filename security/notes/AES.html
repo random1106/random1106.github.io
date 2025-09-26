@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Common Attacks on AES (ECB/CBC/CTR)</title>
+  <meta name="description" content="Common attacks on AES (ECB/CBC/CTR), including ECB detection & byte-at-a-time, cut-and-paste, CBC bit-flipping, CBC padding oracle, and CTR fixed-nonce." />
+  <link href="/assets/css/writeup.css" rel="stylesheet" />
+
+  <!-- 代码高亮样式（放 head） -->
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <!-- MathJax（你已有） -->
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <div class="wrap">
+    <!-- 顶部：站点标题 + 右侧导航 -->
+    <header class="site-header">
+      <div class="logo">
+        <h1>Common Attacks on AES (ECB/CBC/CTR)</h1>
+        
+      </div>
+      <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/index.html">Security</a>
+        <a href="/math/index.html">Math</a>
+      </nav>
+    </header>
+
+    <hr />
+
+    <main id="top">
+      <section aria-labelledby="intro">
+        <h2 id="intro">Overview</a></h2>
+        <p>This article summarizes classic problems from Cryptopals (mainly sets 2–3) and related AES patterns. AES is a block cipher; the mode determines security properties. We’ll focus on three modes:</p>
+        <ul>
+          <li><strong>ECB</strong> (Electronic Codebook)</li>
+          <li><strong>CBC</strong> (Cipher Block Chaining)</li>
+          <li><strong>CTR</strong> (Counter mode)</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="ecb">
+        <h2 id="ecb">ECB </h2>
+        <p><strong>Padding.</strong> Pad to a multiple of 16 bytes (PKCS#7). For example:</p>
+        <pre><code class="language-text">len(message) → multiple of 16 via PKCS#7
+e.g., pad with N bytes of value N.</code></pre>
+
+        <h3 id="ecb-detect">Detecting ECB </h3>
+        <p>If an oracle encrypts <code>prefix || message || suffix</code> under AES-ECB, identical plaintext blocks produce identical ciphertext blocks. Send a repeated block to spot duplication:</p>
+        <pre><code class="language-python"># Pseudocode
+msg = b"a" * 100
+ct  = AES_ECB_Encrypt(pad(prefix + msg + suffix))
+# If you see identical 16-byte chunks repeating in ct, it's likely ECB.
+</code></pre>
+
+        <h3 id="byte-at-a-time">Byte-at-a-time (suffix recovery) </h3>
+        <p>Assume the prefix is empty for simplicity. To recover the first unknown byte of <code>suffix</code>, send 15 bytes of ‘a’ so the first block is <code>ECB("a"*15 + suffix[0])</code>. Brute-force the last byte until the ciphertext block matches; iterate to recover subsequent bytes.</p>
+        <ul>
+          <li><em>Question:</em> How to adapt when there is a fixed, unknown prefix?</li>
+          <li><em>Question:</em> Why this method cannot recover the prefix?</li>
+        </ul>
+
+        <h3 id="cut-and-paste">Cut-and-paste (role=admin) </h3>
+        <p>Because ECB encrypts blocks independently, you can splice ciphertext blocks to craft a desired plaintext:</p>
+        <pre><code class="language-text">Backend: AES_ECB(pad("email=&lt;...&gt;&amp;uid=10&amp;role=user"))
+Goal:    AES_ECB(pad("email=&lt;...&gt;&amp;uid=10&amp;role=admin"))
+# Craft inputs so the block containing "admin" aligns and can be transplanted.</code></pre>
+      </section>
+
+      <section aria-labelledby="cbc">
+        <h2 id="cbc">CBC </h2>
+        <p>Encryption with IV:</p>
+        <pre><code class="language-text">e0 = AES_ECB(block0 ⊕ IV)
+e1 = AES_ECB(block1 ⊕ e0)
+e2 = AES_ECB(block2 ⊕ e1)
+...</code></pre>
+
+        <h3 id="cbc-bitflip">CBC bit-flipping </h3>
+        <p>During <em>decryption</em>, each plaintext block is <code>pi = AES_DEC(ei) ⊕ e(i-1)</code> (with <code>e(-1) = IV</code>). If the application sanitizes <code>;</code> or <code>=</code>, you can flip bits in the previous ciphertext block so the decrypted block contains <code>;admin=true;</code>.</p>
+        <pre><code class="language-text">Target (after decrypt): ... ;admin=true; ...
+Flip bits in previous ciphertext to force those bytes post-XOR.</code></pre>
+
+        <h3 id="cbc-padding-oracle">CBC padding oracle </h3>
+        <p>Given an oracle that returns whether PKCS#7 padding is valid after decryption, you can recover plaintext one byte at a time. The core relation for the last byte is:</p>
+        <pre><code class="language-text">Let D(e0) be raw AES-DEC on the first data block; plaintext p0 = D(e0) ⊕ IV.
+Choose IV' so that p0' ends with 0x01; brute-force IV'[-1] until "valid padding".
+Then p0[-1] = IV'[-1] ⊕ 0x01 ⊕ IV[-1].
+Generalize to 0x02, 0x03, ... to recover the whole block.</code></pre>
+      </section>
+
+      <section aria-labelledby="ctr">
+        <h2 id="ctr">CTR </h2>
+        <p>CTR turns AES into a stream cipher by encrypting <code>nonce || counter</code>:</p>
+        <pre><code class="language-text">keystream_i = AES_ENC(nonce(8B) || counter(8B, little-endian))
+cipher_i     = plain_i ⊕ keystream_i</code></pre>
+
+        <h3 id="ctr-fixed-nonce">Fixed-nonce vulnerability </h3>
+        <p>Reusing the same nonce across messages reuses keystream positions. XORing two ciphertexts cancels the keystream and reduces to single-byte XOR per position, enabling frequency analysis to recover both messages.</p>
+      </section>
+
+      <!-- 可选配图示例（如有图片可解开）
+      <figure class="img-wrap">
+        <img src="/assets/img/aes-blocks.png" alt="AES blocks">
+        <figcaption class="caption">Block behaviors across modes.</figcaption>
+      </figure>
+      -->
+
+      <footer>
+        <hr />
+        <p class="muted">© Yier Lin 2025</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- 返回顶部按钮（对应你 CSS 的 #backTop） -->
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+  <!-- 代码高亮脚本 + 初始化 -->
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script>try{hljs.highlightAll()}catch(e){}</script>
+
+  <!-- Back-to-top 行为 -->
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+</body>
+</html>

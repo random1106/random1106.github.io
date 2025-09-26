@@ -48,7 +48,7 @@ html{ scroll-padding-top: calc(var(--top-gap) + 8px); }
   margin:0;
   font-weight:800;
   letter-spacing:.2px;
-  font-size:28px;
+  font-size:clamp(20px, 5.5vw, 28px);
 }
 
 .lead{
@@ -267,4 +267,18 @@ footer{
   margin-top:24px;
   color:var(--muted);
   font-size:13px;
+}
+
+.wrap img.responsive {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 4px auto 16px;
+}
+
+/* H1 在小屏自适应 */
+
+/* 小屏代码块略缩小，避免横向滚动太多 */
+@media (max-width: 600px) {
+  pre { font-size: 0.92rem; }
 }

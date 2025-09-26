@@ -245,9 +245,32 @@ contract AttackScript is Script {
 
 
       </section>
+
+        <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+      </footer>
     </main>
   </div>
 
+
+
+  <!-- 返回顶部按钮（对应你 CSS 的 #backTop） -->
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+    <!-- Back-to-top 行为 -->
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
 
   <!-- 页尾：hljs 核心 + 语言包 -->
   <!-- 核心 -->
