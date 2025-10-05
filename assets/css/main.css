@@ -4,11 +4,12 @@
 
   --math-color: #7cffb3;
   --sec-color: #ff2d55;
+  --home-color: #3399ff; /* Home 蓝色，可以改 */
 }
 
 body {
   margin: 0;
-  background: #0d0f12;
+  background: var(--bg);
   color: var(--fg);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Fira Code", monospace;
   line-height: 1.65;
@@ -34,7 +35,7 @@ p {
   color: var(--fg);
 }
 
-/* 链接按钮基础样式 */
+/* —— 全局按钮式链接（非导航） —— */
 a {
   display: inline-block;
   margin-right: 12px;
@@ -50,7 +51,7 @@ a {
   transition: all 0.3s ease;
 }
 
-/* Mathematics 按钮：绿色边框 */
+/* Math 按钮：绿色 */
 a[href*="math"] {
   border: 2px solid var(--math-color);
 }
@@ -60,7 +61,7 @@ a[href*="math"]:hover {
   box-shadow: 0 0 12px rgba(124, 255, 179, 0.5);
 }
 
-/* Security 按钮：红色边框 */
+/* Security 按钮：红色 */
 a[href*="security"] {
   border: 2px solid var(--sec-color);
 }
@@ -70,7 +71,7 @@ a[href*="security"]:hover {
   box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
 }
 
-/* 普通正文链接：不加 padding/margin，不改 display */
+/* —— 正文内普通链接 —— */
 .container p a {
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -82,12 +83,12 @@ a[href*="security"]:hover {
   box-shadow: none;
 }
 
-/* 只给按钮样式 */
+/* —— 只给 .links 区域的按钮 —— */
 .links .btn {
   display: inline-block;
   margin-right: 12px;
-  margin-top: 8px;        /* 想更紧凑可再小一点或设为0 */
-  padding: 0.5rem 1rem;   /* 想更紧凑可再小一点 */
+  margin-top: 8px;
+  padding: 0.5rem 1rem;
   font-weight: 600;
   text-decoration: none;
   color: var(--fg);
@@ -96,38 +97,86 @@ a[href*="security"]:hover {
   backdrop-filter: blur(4px);
   transition: all .3s ease;
 }
-
-/* 保留你对两类按钮的配色 */
-.links .btn[href*="math"]     { border: 2px solid var(--math-color); }
+.links .btn[href*="math"] {
+  border: 2px solid var(--math-color);
+}
 .links .btn[href*="math"]:hover {
   color: var(--math-color);
   background: rgba(124,255,179,.08);
   box-shadow: 0 0 12px rgba(124,255,179,.5);
 }
-.links .btn[href*="security"] { border: 2px solid var(--sec-color); }
+.links .btn[href*="security"] {
+  border: 2px solid var(--sec-color);
+}
 .links .btn[href*="security"]:hover {
   color: var(--sec-color);
   background: rgba(255,45,85,.08);
   box-shadow: 0 0 12px rgba(255,45,85,.5);
 }
 
-site-header {
+/* —— Header & Navbar —— */
+.site-header {
   display: flex;
-  justify-content: space-between; /* 左右分布 */
-  align-items: center;            /* 垂直居中 */
+  justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .logo h1 { margin: 0; }
-.lead { margin: 0; font-size: 0.9rem; color: #666; }
+.lead { margin: 0; font-size: 0.9rem; color: #888; }
 
-/* 关键：避免外部样式把 <a> 设成 block 导致竖排 */
-.navbar { display: flex; gap: 1.5rem; font-size: 0.95rem; margin: 0; }
-.navbar a { display: inline-block; text-decoration: none; color: #444; font-weight: 500; }
-.navbar a:hover { color: #000; border-bottom: 2px solid #000; }
+.navbar {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.95rem;
+  margin: 0;
+}
 
-/* 可选：小屏幕时换行居右 */
+/* —— 导航链接强覆盖 —— */
+.site-header .navbar a,
+.site-header .navbar a:link,
+.site-header .navbar a:visited,
+.site-header .navbar a:hover,
+.site-header .navbar a:active,
+.site-header .navbar a:focus {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+/* Home 蓝色 */
+.site-header .navbar a[href*="index"] {
+  color: var(--home-color) !important;
+}
+.site-header .navbar a[href*="index"]:hover {
+  color: #1a75ff !important;
+  border-bottom: 2px solid #1a75ff !important;
+}
+
+/* Security 红色 */
+.site-header .navbar a[href*="security"] {
+  color: var(--sec-color) !important;
+}
+.site-header .navbar a[href*="security"]:hover {
+  color: #e60039 !important;
+  border-bottom: 2px solid #e60039 !important;
+}
+
+/* Math 绿色 */
+.site-header .navbar a[href*="math"] {
+  color: var(--math-color) !important;
+}
+.site-header .navbar a[href*="math"]:hover {
+  color: #00e68a !important;
+  border-bottom: 2px solid #00e68a !important;
+}
+
+/* —— 小屏幕换行 —— */
 @media (max-width: 600px) {
   .site-header { flex-wrap: wrap; }
   .navbar { width: 100%; justify-content: flex-end; margin-top: 0.5rem; }
