@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yier Lin</title>
+  <meta name="description" content="CTF writeup for WWCTF 2025: Solidity Jail 1" />
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+
+  <header class="site-header">
+    <div class="logo">
+    <h1>WWCTF 2025 — Solidity Jail 1</h1>
+    </div>
+    <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/writeups/index.html">Writeup</a>
+    </nav>
+  </header>
+
+    <hr>
+
+    <main id="top">
+      <img class="responsive" src="/assets/img/solidityjail1.png" alt="solidityjail1.png"></img>
+
+        <section>
+        <h2 id="summary">Summary </h2>
+        <div id="summary-md">
+          <p>This is an interesting challenge; it is the first time I have seen a jail challenge for Solidity.</p>
+        </div>
+        <p>The goal is to interact with a smart contract (to read the flag) without using certain keywords. The blacklist is given as follows:</p>
+        <pre><code class="language-solidity">blacklist = [
+    "flag",
+    "transfer",
+    "address",
+    "this",
+    "block",
+    "tx",
+    "origin",
+    "gas",
+    "fallback",
+    "receive",
+    "selfdestruct",
+    "suicide"
+]</code></pre>
+      <p>The goal is to provide the contents of the <code>main</code> function in the Solution contract, which the server will deploy. After deployment, the target contract will call this <code>main</code> function and print its return value. Our objective is to make it return the flag by reading from the flag function (which is public) in the target contract.</p>
+      <img class="responsive" src="/assets/img/solidityjail11.png" alt="solidityjail11.png"></img>
+      <p>There are two common ways to call a public or external function in another contract. The first is to define an interface with the same function name and type signature, then cast the contract's address to that interface.
+        The second way is to call the function using <code>address.call(...)</code>, passing in the function signature and arguments manually as calldata.</p>
+      <p>There are different ways to encode function calls with a signature. For example, we can use one of the following three:</p>
+      </section>
+
+<pre><code class="language-solidity">abi.encodeWithSignature(functioName ...)
+abi.encodeCall(Contract/Inferance.functionName ...)
+abi.encodeWithSelector(functionSignature ...)</code></pre>
+
+<p>Personally, I have not used the last method very often in practice. However, since the first two both involve the function name string - which is blacklisted - we will use the last method in this case.</p>
+
+<p>The signature of a function is defined as <code>bytes4(keccak256("functionName(input types)"))</code>. We can use Foundry's cast sig command to get the signature. In our case, the signature of <code>flag()</code> is <code>0x890eba68</code>.
+We also need to avoid the address keyword in <code>address.call(...)</code>, which is blacklisted, because the target calls the main function, so its address is encoded in msg.sender. After figuring this out, a standard call will give us the solution.</p>
+
+<img class="responsive" src="/assets/img/solidityjail12.png" alt="solidityjail12.png"></img>
+
+      <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+      </footer>
+
+    </main>
+  </div>
+
+
+
+
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+</html>

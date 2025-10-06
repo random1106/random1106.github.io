@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yier Lin</title>
+  <meta name="description" content="TBA" />
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+
+  <header class="site-header">
+    <div class="logo">
+    <h1>TBA</h1>
+    </div>
+    <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/writeups/index.html">Writeup</a>
+    </nav>
+  </header>
+
+    <hr>
+
+    <main id="top">
+      <img class="responsive" src="" alt=""></img>
+
+        <section>
+        <h2 id="summary">Summary </h2>
+        <div id="summary-md">
+          <p></p>
+        </div>
+
+        <pre><code class="language-solidity"></code></pre>
+        <br>
+
+      </section>
+
+        <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+      </footer>
+
+    </main>
+  </div>
+
+
+
+
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+</html>

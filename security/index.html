@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Security — Yier Lin</title>
-  <link rel="stylesheet" href="/assets/css/writeup.css">
+  <title>Yier Lin</title>
+  <link rel="stylesheet" href="/assets/css/main.css">
 
 </head>
 
@@ -18,8 +18,7 @@
 
       <nav class="navbar">
         <a href="/index.html">Home</a>
-        <a href="/security/index.html">Security</a>
-        <a href="/math/index.html">Math</a>
+        <a href="/security/writeups/index.html">Writeup</a>
       </nav>
     </header>
 
@@ -41,11 +40,8 @@
       <section aria-label="CTF">
         <h2>CTFs I participated in</h2>
 
-        <!-- Top 3 -->
-        <ul id="ctfTop" class="list"></ul>
-
-        <!-- 滚动窗口 -->
         <div class="news-panel">
+          <ul id="ctfTop" class="list"></ul>
           <ul id="ctfAll" class="list"></ul>
         </div>
       </section>
@@ -67,7 +63,7 @@
         if(!r.ok) throw 0;
         return await r.json();
       }catch{
-        return [
+        return [    
           { event:"Alfa Surfing CTF", link:"https://ctftime.org/event/2935", date:"2025-09-12", team:"team: Project Sekai", placement:"ranked: 6/348"},
           { event:"ImaginaryCTF 2025", link:"https://ctftime.org/event/2799", date:"2025-09-05", team:"team: Capablanca", placement:"ranked: 60/1414"},
           { event:"corCTF 2025", link:"https://ctftime.org/event/2763", date:"2025-08-30", team:"team: P1GSEKAI", placement:"ranked: 2/474"},
@@ -78,19 +74,20 @@
       }
     }
 
-    // 提取 "ranked: 6/348" 的名次数字 6；取不到时返回很大的值，避免排到前面
     function parsePlacementRank(s){
       const m = String(s||'').match(/(\d+)\s*\/\s*\d+/);
       return m ? parseInt(m[1], 10) : Number.POSITIVE_INFINITY;
     }
 
     function sortAll(arr){
-      return [...arr].sort((a,b)=>{
-        const ra = parsePlacementRank(a.placement);
-        const rb = parsePlacementRank(b.placement);
-        if (ra !== rb) return ra - rb;               // 名次小 → 排前
-        return (b.score||0) - (a.score||0);          // 分数高 → 排前
-      });
+    return [...arr].sort((a,b)=>{
+      const da = new Date(a.date || 0);
+      const db = new Date(b.date || 0);
+      if (db - da !== 0) return db - da;              
+      const ra = parsePlacementRank(a.placement);
+      const rb = parsePlacementRank(b.placement);
+      return ra - rb;
+    });
     }
 
     function render(list, targetId){
@@ -125,15 +122,13 @@
       const row = document.getElementById('newsRow');
       if(!row) return;
 
-      // 按 data-date 从新到旧排序
       const items = Array.from(row.querySelectorAll('a.badge'));
       items.sort((a,b)=>{
         const da = new Date(a.dataset.date || 0);
         const db = new Date(b.dataset.date || 0);
-        return db - da; // 新 → 旧
+        return db - da;
       });
 
-      // 仅保留最近 3 条
       row.innerHTML = '';
       items.slice(0,3).forEach(el=> row.appendChild(el));
     })();
@@ -141,13 +136,13 @@
 
   <script>
     (function(){
-      // 给每个带 data-date 的 badge，在标题尾部添加一个小号日期
+
       document.querySelectorAll('.tag-row a.badge[data-date]').forEach(a=>{
         const d = a.dataset.date;
         if(!d) return;
         const s = document.createElement('span');
         s.className = 'date';
-        s.textContent = `(${d})`; // 想换成 ·2025-09-09 就写 ` · ${d}`
+        s.textContent = `(${d})`;
         a.appendChild(s);
       });
     })();

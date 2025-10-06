@@ -1,183 +1,297 @@
-:root {
-  --bg: #0d0f12;
+/* ==== Unified theme variables ==== */
+:root{
+  /* 基础色 */
+  --bg: #0d0f12;            /* 取 main.css 的背景，兼容 writeup 的深色 */
   --fg: #e6edf3;
+  --muted:#9fb0c3;
+  --link:#7cc5ff;
+  --code-bg:#0f1320;
+  --border:#1a2130;
 
-  --math-color: #7cffb3;
-  --sec-color: #ff2d55;
-  --home-color: #3399ff; /* Home 蓝色，可以改 */
-}
+  /* 专栏/频道色 */
+  --math-color:#7cffb3;
+  --sec-color:#ff2d55;
+  --home-color:#3399ff;
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Fira Code", monospace;
-  line-height: 1.65;
-}
-
-.container {
-  max-width: 820px;
-  margin: 64px auto;
-  padding: 0 24px;
-  text-align: left;
+  /* 字体与排版 */
+  --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --wrap:820px;
+  --top-gap:72px; /* 顶部留白/安全区 */
 }
 
-h1 {
-  margin: 0 0 14px;
-  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
-  font-weight: 700;
-  color: #fff;
+/* ==== Base ==== */
+*{ box-sizing:border-box }
+html,body{ height:100% }
+html{ scroll-padding-top: calc(var(--top-gap) + 8px); }
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font:16px/1.7 var(--sans);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  padding-top:max(var(--top-gap), env(safe-area-inset-top));
 }
 
-p {
-  margin: 0 0 16px;
-  font-size: 1.05rem;
-  color: var(--fg);
+/* 容器：兼容 .container 与 .wrap 两种命名 */
+.container, .wrap{
+  max-width:var(--wrap);
+  margin:64px auto;
+  padding:0 24px;
+  text-align:left;
+}
+.wrap{ margin:0 auto 64px; padding:0 18px; } /* 保留原 writeup 的细微差异 */
+
+h1{
+  margin:0 0 14px;
+  font-size:clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+  font-weight:700;
+  color:#fff;
+}
+h2{
+  margin:28px 0 8px;
+  font-weight:800;
+  font-size:20px;
+}
+p{
+  margin:0 0 16px;
+  font-size:1.05rem;
+  color:var(--fg);
+}
+.muted{ color:var(--muted); }
+
+/* ==== 全局“按钮式”链接（保留 main.css 行为） ==== */
+a{
+  display:inline-block;
+  margin-right:12px;
+  margin-top:12px;
+  padding:0.6rem 1.2rem;
+  font-size:1rem;
+  font-weight:600;
+  text-decoration:none;
+  color:var(--fg);
+  border-radius:10px;
+  background:rgba(255,255,255,0.04);
+  backdrop-filter:blur(4px);
+  transition:all .3s ease;
 }
 
-/* —— 全局按钮式链接（非导航） —— */
-a {
-  display: inline-block;
-  margin-right: 12px;
-  margin-top: 12px;
-  padding: 0.6rem 1.2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--fg);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(4px);
-  transition: all 0.3s ease;
+/* 正文内普通链接覆盖回“普通超链”样式（避免都变按钮） */
+.container p a, .wrap p a{
+  text-decoration:underline;
+  text-underline-offset:2px;
+  padding:0;
+  margin:0;
+  display:inline;
+  border:0;
+  background:none;
+  box-shadow:none;
 }
 
-/* Math 按钮：绿色 */
-a[href*="math"] {
-  border: 2px solid var(--math-color);
+/* 专栏按钮色（根据 href 包含关键字） */
+a[href*="math"]{ border:2px solid var(--math-color); }
+a[href*="math"]:hover{
+  color:var(--math-color);
+  background:rgba(124,255,179,.08);
+  box-shadow:0 0 12px rgba(124,255,179,.5);
 }
-a[href*="math"]:hover {
-  color: var(--math-color);
-  background: rgba(124, 255, 179, 0.08);
-  box-shadow: 0 0 12px rgba(124, 255, 179, 0.5);
-}
-
-/* Security 按钮：红色 */
-a[href*="security"] {
-  border: 2px solid var(--sec-color);
-}
-a[href*="security"]:hover {
-  color: var(--sec-color);
-  background: rgba(255, 45, 85, 0.08);
-  box-shadow: 0 0 12px rgba(255, 45, 85, 0.5);
+a[href*="security"]{ border:2px solid var(--sec-color); }
+a[href*="security"]:hover{
+  color:var(--sec-color);
+  background:rgba(255,45,85,.08);
+  box-shadow:0 0 12px rgba(255,45,85,.5);
 }
 
-/* —— 正文内普通链接 —— */
-.container p a {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  padding: 0;
-  margin: 0;
-  display: inline;
-  border: 0;
-  background: none;
-  box-shadow: none;
+/* links 区域的轻量按钮（保留 main.css） */
+.links .btn{
+  display:inline-block;
+  margin-right:12px;
+  margin-top:8px;
+  padding:0.5rem 1rem;
+  font-weight:600;
+  text-decoration:none;
+  color:var(--fg);
+  border-radius:10px;
+  background:rgba(255,255,255,0.04);
+  backdrop-filter:blur(4px);
+  transition:all .3s ease;
+}
+.links .btn[href*="math"]{ border:2px solid var(--math-color); }
+.links .btn[href*="math"]:hover{
+  color:var(--math-color);
+  background:rgba(124,255,179,.08);
+  box-shadow:0 0 12px rgba(124,255,179,.5);
+}
+.links .btn[href*="security"]{ border:2px solid var(--sec-color); }
+.links .btn[href*="security"]:hover{
+  color:var(--sec-color);
+  background:rgba(255,45,85,.08);
+  box-shadow:0 0 12px rgba(255,45,85,.5);
 }
 
-/* —— 只给 .links 区域的按钮 —— */
-.links .btn {
-  display: inline-block;
-  margin-right: 12px;
-  margin-top: 8px;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--fg);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(4px);
-  transition: all .3s ease;
+/* ==== Header & Navbar（合并） ==== */
+.site-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:1rem;
+  margin-bottom:1.5rem;
 }
-.links .btn[href*="math"] {
-  border: 2px solid var(--math-color);
-}
-.links .btn[href*="math"]:hover {
-  color: var(--math-color);
-  background: rgba(124,255,179,.08);
-  box-shadow: 0 0 12px rgba(124,255,179,.5);
-}
-.links .btn[href*="security"] {
-  border: 2px solid var(--sec-color);
-}
-.links .btn[href*="security"]:hover {
-  color: var(--sec-color);
-  background: rgba(255,45,85,.08);
-  box-shadow: 0 0 12px rgba(255,45,85,.5);
+.logo h1{ margin:0; font-weight:800; letter-spacing:.2px; font-size:clamp(20px, 5.5vw, 28px); }
+.lead{ margin:0; color:#888; font-size:.9rem; }
+.navbar{
+  display:flex;
+  gap:1.5rem;
+  font-size:.95rem;
+  margin:0;
 }
 
-/* —— Header & Navbar —— */
-.site-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.logo h1 { margin: 0; }
-.lead { margin: 0; font-size: 0.9rem; color: #888; }
-
-.navbar {
-  display: flex;
-  gap: 1.5rem;
-  font-size: 0.95rem;
-  margin: 0;
-}
-
-/* —— 导航链接强覆盖 —— */
+/* 导航链接强覆盖（保留 main.css，使其不受“按钮式 a”影响） */
 .site-header .navbar a,
 .site-header .navbar a:link,
 .site-header .navbar a:visited,
 .site-header .navbar a:hover,
 .site-header .navbar a:active,
-.site-header .navbar a:focus {
-  display: inline !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: none !important;
-  box-shadow: none !important;
-  text-decoration: none !important;
+.site-header .navbar a:focus{
+  display:inline !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  background:none !important;
+  box-shadow:none !important;
+  text-decoration:none !important;
+  color:var(--fg);
+  font-weight:600;
 }
 
-/* Home 蓝色 */
-.site-header .navbar a[href*="index"] {
-  color: var(--home-color) !important;
+/* 按页面类型着色（保留 main.css 行为） */
+.site-header .navbar a[href*="index"]{ color:var(--home-color) !important; }
+.site-header .navbar a[href*="index"]:hover{
+  color:#1a75ff !important; border-bottom:2px solid #1a75ff !important;
 }
-.site-header .navbar a[href*="index"]:hover {
-  color: #1a75ff !important;
-  border-bottom: 2px solid #1a75ff !important;
+.site-header .navbar a[href*="security"]{ color:var(--sec-color) !important; }
+.site-header .navbar a[href*="security"]:hover{
+  color:#e60039 !important; border-bottom:2px solid #e60039 !important;
 }
-
-/* Security 红色 */
-.site-header .navbar a[href*="security"] {
-  color: var(--sec-color) !important;
-}
-.site-header .navbar a[href*="security"]:hover {
-  color: #e60039 !important;
-  border-bottom: 2px solid #e60039 !important;
+.site-header .navbar a[href*="math"]{ color:var(--math-color) !important; }
+.site-header .navbar a[href*="math"]:hover{
+  color:#00e68a !important; border-bottom:2px solid #00e68a !important;
 }
 
-/* Math 绿色 */
-.site-header .navbar a[href*="math"] {
-  color: var(--math-color) !important;
-}
-.site-header .navbar a[href*="math"]:hover {
-  color: #00e68a !important;
-  border-bottom: 2px solid #00e68a !important;
+/* 当前页高亮（若使用 aria-current 或 .is-active） */
+.navbar a[aria-current="page"], .navbar a.is-active{
+  color:var(--link);
+  border-bottom:2px solid var(--link);
 }
 
-/* —— 小屏幕换行 —— */
-@media (max-width: 600px) {
-  .site-header { flex-wrap: wrap; }
-  .navbar { width: 100%; justify-content: flex-end; margin-top: 0.5rem; }
+/* 小屏适配 */
+@media (max-width:600px){
+  .site-header{ flex-wrap:wrap; }
+  .navbar{ width:100%; justify-content:flex-end; margin-top:.5rem; }
+}
+
+/* ==== 通用链接/分隔线/可达性（来自 writeup） ==== */
+a:focus-visible, button:focus-visible, [role="button"]:focus-visible{
+  outline:2px solid var(--link);
+  outline-offset:2px;
+  border-radius:6px;
+}
+hr{
+  border:none;
+  border-top:1px solid var(--border);
+  margin:16px 0;
+}
+
+/* ==== 列表（CTF 列表） ==== */
+ul{ margin:10px 0 0; padding:0; list-style:none; }
+li{ padding:10px 0; border-bottom:1px dashed var(--border); }
+.item-title{ font-weight:700; }
+.meta{ font-size:13px; color:var(--muted); margin-top:2px; }
+
+/* ==== 代码样式 ==== */
+:not(pre) > code{
+  font-family:var(--mono);
+  background:var(--code-bg);
+  color:#cfe7ff;
+  padding:.15em .35em;
+  border-radius:6px;
+}
+pre code:not(.hljs){ background:transparent; color:inherit; padding:0; }
+pre{ overflow:auto; border-radius:10px; }
+
+/* 小屏代码稍缩小 */
+@media (max-width:600px){ pre{ font-size:.92rem; } }
+
+/* ==== 折叠区 ==== */
+details{
+  border-bottom:1px dashed var(--border);
+  padding:6px 0 10px;
+}
+summary{
+  display:flex; align-items:baseline; gap:10px;
+  cursor:pointer; list-style:none; user-select:none;
+}
+summary::-webkit-details-marker{ display:none; }
+summary .count{ color:var(--muted); font-size:12px; }
+summary .hash{ margin-left:0; }
+
+/* ==== 回到顶部按钮 ==== */
+#backTop{
+  position:fixed; right:18px; bottom:18px;
+  padding:8px 10px; border-radius:8px;
+  border:1px solid var(--border);
+  background:#0d111a; color:var(--fg);
+  font:600 12px var(--mono);
+  opacity:0; pointer-events:none; transform:translateY(8px);
+  transition:opacity .15s ease, transform .15s ease;
+}
+#backTop.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
+#backTop:hover{ text-decoration:underline; }
+
+/* ==== CTF News 面板 ==== */
+#ctfTop, #ctfAll{ margin:0; padding:0; list-style:none; }
+.news-panel{
+  max-height:260px; overflow-y:auto;
+  border:1px solid var(--border);
+  border-radius:10px; padding:6px 0;
+  background:#0d111a; -webkit-overflow-scrolling:touch;
+}
+.news-panel .list li, #ctfTop li{ padding-left:10px; padding-right:10px; }
+
+.badge{
+  display:inline-block;
+  font:700 12px var(--mono);
+  color:#cfe7ff; background:var(--code-bg);
+  border:1px solid var(--border);
+  padding:.1em .45em; border-radius:6px; margin-left:.35em;
+}
+
+/* 顶部“胖徽章” */
+.tag-row{ display:flex; flex-direction:column; gap:10px; }
+.tag-row .badge{
+  display:block; width:100%;
+  white-space:normal; word-break:break-word;
+  font:700 16px var(--sans); line-height:1.6;
+  padding:.5em .9em; border-radius:12px;
+}
+.tag-row .badge .date{
+  font-size:12px; color:var(--muted); margin-left:.5em; white-space:nowrap;
+}
+@media (max-width:480px){ .tag-row .badge{ font-size:15px; } }
+
+/* ==== 媒体辅助 & 页脚 ==== */
+.img-wrap{ text-align:center; }
+.caption{ margin-top:8px; color:var(--muted); }
+footer{ margin-top:24px; color:var(--muted); font-size:13px; }
+.wrap img.responsive{ max-width:100%; height:auto; display:block; margin:4px auto 16px; }
+
+/* ==== 可选主题：把导航统一成青绿色（原 writeup 最后两条）====
+   用法：给最外层元素加 .theme-green-nav
+   <body class="theme-green-nav"> ... </body>
+------------------------------------------------- */
+.theme-green-nav .navbar a{ color:#00b894 !important; }
+.theme-green-nav .navbar a:hover{
+  color:#00997a !important; border-bottom:2px solid #00997a !important;
 }

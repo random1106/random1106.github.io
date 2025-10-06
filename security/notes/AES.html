@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Common Attacks on AES (ECB/CBC/CTR)</title>
   <meta name="description" content="Common attacks on AES (ECB/CBC/CTR), including ECB detection & byte-at-a-time, cut-and-paste, CBC bit-flipping, CBC padding oracle, and CTR fixed-nonce." />
-  <link href="/assets/css/writeup.css" rel="stylesheet" />
+  <link href="/assets/css/main.css" rel="stylesheet" />
 
   <!-- 代码高亮样式（放 head） -->
   <link rel="stylesheet"
@@ -17,7 +17,6 @@
 
 <body>
   <div class="wrap">
-    <!-- 顶部：站点标题 + 右侧导航 -->
     <header class="site-header">
       <div class="logo">
         <h1>Common Attacks on AES (ECB/CBC/CTR)</h1>
@@ -25,8 +24,7 @@
       </div>
       <nav class="navbar">
         <a href="/index.html">Home</a>
-        <a href="/security/index.html">Security</a>
-        <a href="/math/index.html">Math</a>
+        <a href="/security/writeups/index.html">Writeup</a>
       </nav>
     </header>
 
@@ -47,14 +45,15 @@
         <h2 id="ecb">ECB </h2>
         <p><strong>Padding.</strong> Pad to a multiple of 16 bytes (PKCS#7). For example:</p>
         <pre><code class="language-text">len(message) → multiple of 16 via PKCS#7
-e.g., pad with N bytes of value N.</code></pre>
+pad with N bytes of value N (N between 1 and 16) so that after padding, 
+the total length is a multiple of 16.</code></pre>
 
         <h3 id="ecb-detect">Detecting ECB </h3>
         <p>If an oracle encrypts <code>prefix || message || suffix</code> under AES-ECB, identical plaintext blocks produce identical ciphertext blocks. Send a repeated block to spot duplication:</p>
         <pre><code class="language-python"># Pseudocode
 msg = b"a" * 100
 ct  = AES_ECB_Encrypt(pad(prefix + msg + suffix))
-# If you see identical 16-byte chunks repeating in ct, it's likely ECB.
+# If you see multiple identical 16-byte chunks repeating in ct, it's likely ECB.
 </code></pre>
 
         <h3 id="byte-at-a-time">Byte-at-a-time (suffix recovery) </h3>
@@ -71,43 +70,64 @@ Goal:    AES_ECB(pad("email=&lt;...&gt;&amp;uid=10&amp;role=admin"))
 # Craft inputs so the block containing "admin" aligns and can be transplanted.</code></pre>
       </section>
 
+      This can be achieved through a cut-and-paste attack. I will not go into the details, but the essence of this attack is to fully understand how our input is split into blocks, and to identify which parts of the input correspond to which encrypted blocks.
+
       <section aria-labelledby="cbc">
         <h2 id="cbc">CBC </h2>
-        <p>Encryption with IV:</p>
-        <pre><code class="language-text">e0 = AES_ECB(block0 ⊕ IV)
-e1 = AES_ECB(block1 ⊕ e0)
-e2 = AES_ECB(block2 ⊕ e1)
-...</code></pre>
-
-        <h3 id="cbc-bitflip">CBC bit-flipping </h3>
-        <p>During <em>decryption</em>, each plaintext block is <code>pi = AES_DEC(ei) ⊕ e(i-1)</code> (with <code>e(-1) = IV</code>). If the application sanitizes <code>;</code> or <code>=</code>, you can flip bits in the previous ciphertext block so the decrypted block contains <code>;admin=true;</code>.</p>
-        <pre><code class="language-text">Target (after decrypt): ... ;admin=true; ...
-Flip bits in previous ciphertext to force those bytes post-XOR.</code></pre>
+        <p>
+Similar to the ECB cut-and-paste attack, the bit-flipping attack allows us to manipulate the ciphertext so that, after decryption, we obtain the desired message.
+        </p>
+        <p>
+The attack exploits the XOR process that occurs during CBC decryption.
+Suppose we have a CBC encryption oracle of the form:
+        <pre><code class="language-text">ciphertext = AES-CBC(pad(prefix + message + suffix)) </code></pre>
+We can freely choose the message input, but certain characters such as ; and = are sanitized and cannot appear directly. Our goal is to create a ciphertext that, when decrypted, contains the substring:
+<pre><code class="language-text">;admin=true; </code></pre>
+To simplify, let us assume that the length of the prefix is a multiple of 16. In CBC mode, the encryption of a given block is not affected by the subsequent blocks of the input message. We encrypt the following message:
+<pre><code class="language-text">original_message + "*admin=true*****" </code></pre>
+and then adjusts the last second block (using XOR) so that "*admin=true*" becomes ";admin=true;". 
 
         <h3 id="cbc-padding-oracle">CBC padding oracle </h3>
-        <p>Given an oracle that returns whether PKCS#7 padding is valid after decryption, you can recover plaintext one byte at a time. The core relation for the last byte is:</p>
-        <pre><code class="language-text">Let D(e0) be raw AES-DEC on the first data block; plaintext p0 = D(e0) ⊕ IV.
-Choose IV' so that p0' ends with 0x01; brute-force IV'[-1] until "valid padding".
-Then p0[-1] = IV'[-1] ⊕ 0x01 ⊕ IV[-1].
-Generalize to 0x02, 0x03, ... to recover the whole block.</code></pre>
+        <p>Imagine there is a padding oracle that works as follows:</p>
+        
+<pre><code class="language-text">encrypted_message -> decrypt -> check PKCS#7 padding (return true/false)</code></pre>
+        
+        <p>This oracle tells you whether the encrypted message corresponds to a correctly padded plaintext.
+It turns out that with such a padding oracle, we can fully decrypt the message. The idea is simple: we take an arbitrary 16-byte encrypted block and craft an IV like "\x00" * 15 + ?. If this ciphertext passes the oracle's check, then it is very likely that</p>
+      
+<pre><code class="language-text">brute force IV[-1] so that it passed the oracle check, which means:
+
+IV[-1] ^ xor(previous encrypted block, raw message) = \x01 ->
+ 
+xor(previous encrypted block, raw message)[-1] = \x01 ^ IV[-1]
+
+This IV[-1] will be used in the next paragraph.</code></pre>
+
+<p>Next, we set the IV to "\x00" * 14 + IV[-2] + \x01 ^ \x02 ^ IV[-1] , this guarantees that the last byte after xor with IV is \x02. 
+  Then brute force process until the oracle returns true. This tells us that
+</p>
+
+<pre><code class="language-text">IV[-2] ^ xor(previous encrypted block, raw message)[-2] = \x02 ->
+
+xor(previous encrypted block, raw message)[-2] = \x02 ^ IV[-2].</code></pre>
+
+<p>Continue this idea, we shall be able to recover xor(previous encrypted block, raw_message_block) , since previous encrypted block is known, we can recover raw_message_block .</p>
       </section>
 
       <section aria-labelledby="ctr">
         <h2 id="ctr">CTR </h2>
-        <p>CTR turns AES into a stream cipher by encrypting <code>nonce || counter</code>:</p>
-        <pre><code class="language-text">keystream_i = AES_ENC(nonce(8B) || counter(8B, little-endian))
-cipher_i     = plain_i ⊕ keystream_i</code></pre>
-
+        <p>CTR mode is a stream cipher; even blocks with the same plaintext content will produce different ciphertext. CTR generates the keystream by encrypting the nonce together with a counter.</p>
+        <pre><code class="language-text">keystream_i = AES.encrypt(nonce (8 bytes) || counter (8 bytes, little endian))</code></pre>
+        <p>The nonce is used to prevent replay attacks and to ensure that the keystream is not reused. For a fixed nonce, the keystream is composed as follows:</p>
+        <pre><code class="language-text">(first 16 bytes of keystream) keystream_0 = AES.encrypt(nonce || "\x00"*8)
+(next 16 bytes of keystream) keystream_1 = AES.encrypt(nonce || "\x01" + "\x00"*7)
+(next 16 bytes of keystream) keystream_2 = AES.encrypt(nonce || "\x02" + "\x00"*7)</code></pre>
         <h3 id="ctr-fixed-nonce">Fixed-nonce vulnerability </h3>
-        <p>Reusing the same nonce across messages reuses keystream positions. XORing two ciphertexts cancels the keystream and reduces to single-byte XOR per position, enabling frequency analysis to recover both messages.</p>
+        <p>When CTR mode reuses the same nonce to encrypt different messages, the keystream becomes vulnerable.
+The attack reduces to a <a href="https://cryptopals.com/sets/1/challenges/3">single-byte XOR problem</a>, where letter frequency analysis can be used to recover the keystream.</p>
       </section>
 
-      <!-- 可选配图示例（如有图片可解开）
-      <figure class="img-wrap">
-        <img src="/assets/img/aes-blocks.png" alt="AES blocks">
-        <figcaption class="caption">Block behaviors across modes.</figcaption>
-      </figure>
-      -->
+   
 
       <footer>
         <hr />
@@ -116,14 +136,11 @@ cipher_i     = plain_i ⊕ keystream_i</code></pre>
     </main>
   </div>
 
-  <!-- 返回顶部按钮（对应你 CSS 的 #backTop） -->
   <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
 
-  <!-- 代码高亮脚本 + 初始化 -->
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script>try{hljs.highlightAll()}catch(e){}</script>
 
-  <!-- Back-to-top 行为 -->
   <script>
     (function(){
       const btn = document.getElementById('backTop');

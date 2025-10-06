@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CTF Writeups</title>
   <meta name="description" content="Personal CTF writeups index" />
-  <link href="/assets/css/writeup.css" rel="stylesheet">
+  <link href="/assets/css/main.css" rel="stylesheet">
 </head>
 <body>
   <div class="wrap" id="app">
@@ -18,7 +18,8 @@
     <main id="writeups" aria-live="polite"></main>
 
     <footer>
-      <div>Simple index · Markdown‑like typography · <span class="muted">drop into GitHub Pages</span></div>
+      <hr />
+      <p class="muted">© Yier Lin 2025</p>
     </footer>
   </div>
 
@@ -27,13 +28,15 @@
     // Add entries by pushing objects into ENTRIES.
     // Fields: title, event, date (YYYY-MM-DD), link, tags: [..]
     const ENTRIES = [
-      {title:'Sekai Meme Launcher Writeup', event:'Sekai CTF', date:'2025-08-16', link:'./memelauncher.html', tags:['blockchain']},
-      {title:'Dinosaur Park', event:'WWCTF', date:'2025-07-26', link:'#', tags:['blockchain']},
-      {title:'Solidity Jail 2', event:'WWCTF', date:'2025-07-26', link:'#', tags:['blockchain']},
-      {title:'Solidity Jail 1', event:'WWCTF', date:'2025-07-26', link:'#', tags:['blockchain']},
-      {title:'NeverEnough', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['crypto']},
-      {title:'multisig-wallet', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['blockchain']},
-      {title:'Saas', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['crypto']}
+      {type:'ctf', title:'Sekai Meme Launcher', event:'Sekai CTF', date:'2025-08-16', link:'./memelauncher.html', tags:['blockchain']},
+      {type:'ctf', title:'Dinosaur Park', event:'WWCTF', date:'2025-07-26', link:'./dinosaurpark.html', tags:['blockchain']},
+      {type:'ctf', title:'Solidity Jail 2', event:'WWCTF', date:'2025-07-26', link:'./solidityjail2.html', tags:['blockchain']},
+      {type:'ctf', title:'Solidity Jail 1', event:'WWCTF', date:'2025-07-26', link:'./solidityjail1.html', tags:['blockchain']},
+      {type:'ctf', title:'NeverEnough', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['crypto']},
+      {type:'ctf', title:'multisig-wallet', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['blockchain']},
+      {type:'ctf', title:'Saas', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['crypto']},
+      {type:'note', title:'AES encryption attack summary', event:'Note', date:'2025-10-06', link:'../notes/AES.html', tags:['crypto']},
+      {type:'others', title:'Won Top 3 in the Chainlink Reward competitive audit', event:'Others', date:'2025-08-16', link:'../others/chainlink.html', tags:['crypto']}
     ];
 
     // === Render ==============================================================
@@ -59,18 +62,39 @@
       </li>`
     }
 
-    function render(list){
-      const container = $('#writeups');
-      const groups = groupByYear(list);
-      const mostRecentYear = groups[0]?.[0];
+    function renderSections(list){
+      const container = document.getElementById('writeups');
+      const byType = {
+        ctf: list.filter(it=>it.type==='ctf'),
+        note: list.filter(it=>it.type==='note'),
+        others: list.filter(it=>it.type==='others')
+      };
 
-      container.innerHTML = groups.map(([year, items])=>{
+      container.innerHTML = `
+        <section>
+          <h2>Writeups</h2>
+          ${renderGrouped(byType.ctf)}
+        </section>
+        <section>
+          <h2>Notes</h2>
+          ${renderGrouped(byType.note)}
+        </section>
+        <section>
+          <h2>Others</h2>
+          ${renderGrouped(byType.others)}
+        </section>
+      `;
+    }
+
+    function renderGrouped(list){
+      if(!list.length) return '<p class="muted">No entries yet</p>';
+      const groups = groupByYear(list);
+      return groups.map(([year, items])=>{
         const itemsHTML = `<ul>${items.map(itemHTML).join('')}</ul>`;
-        // 用 details/summary 折叠；最新年份默认展开
         return `
-          <details ${year === mostRecentYear ? 'open' : ''}>
+          <details open>
             <summary>
-              <h2 id="y${year}" style="margin:0">${year}</h2>
+              <h3 style="margin:0">${year}</h3>
               <span class="count">${items.length} item${items.length>1?'s':''}</span>
             </summary>
             ${itemsHTML}
@@ -79,7 +103,8 @@
       }).join('');
     }
 
-    render(ENTRIES);
+
+    renderSections(ENTRIES);
 
     // ===== Back-to-Top 按钮逻辑 =====
     const backTop = document.getElementById('backTop');
