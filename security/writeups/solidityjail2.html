@@ -20,7 +20,7 @@
 
   <header class="site-header">
     <div class="logo">
-    <h1>TBA</h1>
+    <h1>WWCTF 2025 — Solidity Jail 2</h1>
     </div>
     <nav class="navbar">
         <a href="/index.html">Home</a>
@@ -90,9 +90,9 @@ if re.search(r"(\d)\1", body):
 
     <pre><code class="language-solidity">Kq\x10\xe20\x94.\xe6%\xf7\xc6O/\x13\xe8Zxz\x18^'</code></pre>
 
-    transferring to address is <code>0x4B7110e230942EE625F7C64F2f13e85a787a185E</code>.
+    which is <code>0x4B7110e230942EE625F7C64F2f13e85a787a185E</code>.
 
-    <p>If we cannot use call, how can we invoke a function call? The only option left is to use an interface. But the function we need to call is flag, which is also blocked. So, the idea is to deploy a contract that contains a function which calls the target's flag function. We can deploy this contract using create2 with the bytecode (which can be obtained by compiling the contract). This should hide the blacklisted word.</p>
+    <p>If we cannot use call, how can we invoke a function call? The only option left seems to use an interface. But the function we need to call is flag, which is also blocked. So, the idea is to deploy a contract that contains a function which calls the target's flag function. We can deploy this contract using create2 with the bytecode (which can be obtained by compiling the contract). This should hide the blacklisted word.</p>
     
     <p>So the draft version of the solution:</p>
 
