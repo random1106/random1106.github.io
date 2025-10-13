@@ -295,3 +295,9 @@ footer{ margin-top:24px; color:var(--muted); font-size:13px; }
 .theme-green-nav .navbar a:hover{
   color:#00997a !important; border-bottom:2px solid #00997a !important;
 }
+
+.math {
+  font-family: "Times New Roman", "Cambria Math", serif; /* 更像数学排版 */
+  font-size: 1.05em;          /* 稍微大一点 */
+  letter-spacing: 0.5px;      /* 稍微加点字间距 */
+}

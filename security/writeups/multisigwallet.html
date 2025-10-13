@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yier Lin</title>
+  <meta name="description" content="TBA" />
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+
+  <header class="site-header">
+    <div class="logo">
+    <h1>TBA</h1>
+    </div>
+    <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/writeups/index.html">Writeup</a>
+    </nav>
+  </header>
+
+    <hr>
+
+    <main id="top">
+      <img class="responsive" src="/assets/img/multisigwallet.png" alt="multisigwallet.png"></img>
+
+        <section>
+        <h2 id="solution"> Solution </h2>
+        
+        <p>
+
+The goal of the CTF is to extract the token from a smart contract.
+
+        </p>
+
+<pre><code class="language-solidity">// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
+import {Setup} from "./Setup.sol";
+/**
+ * @title Locker
+ * @author BrokenAppendix
+ */
+
+struct signature {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+}
+
+
+event LockerDeployed(
+    address lockerAddress,
+    uint256 lockId,
+    uint8[] v,
+    bytes32[] r,
+    bytes32[] s,
+    address[] controllers,
+    uint256 threshold
+);
+
+
+// SlockDotIt ECLocker factory
+contract Locker {
+    uint256 public immutable lockId;
+    bytes32 public immutable msgHash;
+    address[] public controllers;
+    uint256 public immutable threshold;
+    uint256 public tokens;
+
+    mapping(bytes32 => bool) public usedSignatures;
+
+    constructor(
+        uint256 _lockId,
+        signature[] memory signatures,
+        address[] memory _controllers,
+        uint256 _threshold
+    ) {
+        require(
+            _controllers.length >= _threshold && _threshold > 0,
+            "Invalid config"
+        );
+
+        lockId = _lockId;
+        threshold = _threshold;
+        controllers = _controllers;
+        tokens = 1;
+
+        // Compute the expected hash
+        bytes32 _msgHash;
+        assembly {
+            mstore(0x00, "\x19Ethereum Signed Message:\n32") // 28 bytes
+            mstore(0x1C, _lockId)
+            _msgHash := keccak256(0x00, 0x3c)
+        }
+        msgHash = _msgHash;
+
+        validateMultiSig(signatures);
+
+        // Flatten signature arrays
+        uint8[] memory vArr = new uint8[](signatures.length);
+        bytes32[] memory rArr = new bytes32[](signatures.length);
+        bytes32[] memory sArr = new bytes32[](signatures.length);
+
+        for (uint256 i = 0; i < signatures.length; i++) {
+            vArr[i] = signatures[i].v;
+            rArr[i] = signatures[i].r;
+            sArr[i] = signatures[i].s;
+        }
+
+        emit LockerDeployed(address(this), lockId, vArr, rArr, sArr, controllers, threshold);
+
+    }
+
+    function distribute(signature[] memory signatures) external {
+        validateMultiSig(signatures);
+        tokens -= 1;
+    }
+
+    function isSolved()  external view returns (bool) {
+        return tokens == 0;
+    }
+
+    function validateMultiSig(signature[] memory signatures) public {
+        address[] memory seen = new address[](controllers.length);
+        uint256 validCount = 0;
+        for (uint256 i = 0; i < signatures.length; i++){
+            address recovered = _isValidSignature(signatures[i]);
+            require(!_isInArray(recovered, seen), "Same signer cannot sign multiple times");
+
+            // Ensure no duplicate
+            for (uint256 j = 0; j < validCount; j++) {
+                require(seen[j] != recovered, "Duplicate signer");
+            }
+
+            seen[validCount] = recovered;
+            validCount++;
+        }
+        require(validCount == threshold, "Not enough valid signers");
+    }
+
+    function _isValidSignature(
+        signature memory sig
+    ) internal returns (address) {
+        uint8 v = sig.v;
+        bytes32 r = sig.r;
+        bytes32 s = sig.s;
+        address _address = ecrecover(msgHash, v, r, s);
+        require(_isInArray(_address, controllers), "Signer is not a controller");
+
+        bytes32 signatureHash = keccak256(
+            abi.encode([uint256(r), uint256(s), uint256(v)])
+        );
+        require(!usedSignatures[signatureHash], "Signature has already been used");
+        usedSignatures[signatureHash] = true;
+        return _address;
+    }
+
+    function _isInArray(address addr, address[] memory arr)
+        internal
+        pure
+        returns (bool)
+    {
+        for (uint256 i = 0; i < arr.length; i++) {
+            if (arr[i] == addr) return true;
+        }
+        return false;
+    }
+}
+
+
+/**
+ * @dev This is the Setup Contract which checks if the challenge is solved or not
+ * (not a part of the challenge)
+ */
+
+
+
+// Private Keys randomly generated online
+// Signatures generated in signature_generator.js
+// Signatures retrieved by player by reading events in read_signatures.js
+
+contract SetupLocker is Setup {
+    constructor(address player_address) payable Setup(player_address) {}
+
+
+    signature[] signatures;
+    address[] controllers;
+    function deploy() public override returns (address) {
+        uint256 lockId = 0;
+        signatures.push(signature({
+            v: 27,
+            r: 0x36ade3c84a9768d762f611fbba09f0f678c55cd73a734b330a9602b7426b18d9,
+            s: 0x6f326347e65ae8b25830beee7f3a4374f535a8f6eedb5221efba0f17eceea9a9
+        }));
+        signatures.push(signature({
+            v: 28,
+            r: 0x57f4f9e4f2ef7280c23b31c0360384113bc7aa130073c43bb8ff83d4804bd2a7,
+            s: 0x694430205a6b625cc8506e945208ad32bec94583bf4ec116598708f3b65e4910
+        }));
+        signatures.push(signature({
+            v: 27,
+            r: 0xe2e9d4367932529bf0c5c814942d2ff9ae3b5270a240be64b89f839cd4c78d5d,
+            s: 0x6c0c845b7a88f5a2396d7f75b536ad577bbdb27ea8c03769a958b2a9d67117d2
+        }));
+        controllers.push(0x9dF23180748A2E168a24F5BBAB2a50eE38A7d309);
+        controllers.push(0x8Ab87699287fe024A8b4d53385AC848930b19FfF);
+        controllers.push(0x10Bab59adbDd06E90996361181b7d2129A5Eeb5A);
+        uint256 threshold = 3;
+
+        Locker _instance = new Locker(lockId, signatures, controllers, threshold);
+
+        return address(_instance);
+    }
+
+    function isSolved() external view override returns (bool) {
+        return Locker(challenge).isSolved();
+    }
+}
+</code></pre>
+
+<p>
+Long story short, the goal is to make the contract distribute a token. The only way to do this is by sending the contract three signatures that can be verified as signed by the three controllers. The contract provides three signatures, but they have already been used and are no longer valid. However, we can construct three different signatures that can also be verified as signed by the three controllers. This exploits the signature malleability of ECDSA.
+</p>
+
+<p>
+In ECDSA, a signature is composed of (v,r,s), where v is either 27 or 28 (1 byte), and r, s are 32 bytes each.
+</p>
+
+<p>
+The malleability of ECDSA corresponds to the fact that if (v, r, s) can be verified, then (v′, r, n−s) can also be verified. Here, n is a fixed number corresponding to the secp256k1 elliptic curve, and v′=27 if v=28, and v′=28 if v=27. The mechanism behind this malleability is that the elliptic curve is symmetric and certain group properties hold (in depth, this involves some abstract algebra, which we won’t go into here).
+</p>
+
+<p>
+If you want to learn the real math behind ECDSA signatures, here is a very good post I found: https://kakaroto.ca/2012/01/how-the-ecdsa-algorithm-works/
+</p>
+
+<p>
+We can use, for example, Foundry to deploy a contract Attacker.sol written as follows:
+</p>
+
+<pre><code class="language-solidity">
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
+import {Locker, signature} from "./Locker.sol";
+
+contract Attacker {
+    // secp256k1 curve has a fixed large order n
+    
+    uint256 n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+    
+    // original signatures
+    uint256 s1 = 0x6f326347e65ae8b25830beee7f3a4374f535a8f6eedb5221efba0f17eceea9a9; 
+    uint256 s2 = 0x694430205a6b625cc8506e945208ad32bec94583bf4ec116598708f3b65e4910;
+    uint256 s3 = 0x6c0c845b7a88f5a2396d7f75b536ad577bbdb27ea8c03769a958b2a9d67117d2;
+
+    function attack(address locker) external {
+        signature[] memory sigs = new signature[](3);
+        sigs[0] = signature({
+            v: 28, // change from 27 to 28
+            r: 0x36ade3c84a9768d762f611fbba09f0f678c55cd73a734b330a9602b7426b18d9,
+            s: bytes32(n-s1)
+        });
+        sigs[1] = signature({
+            v: 27, // change from 28 to 27
+            r: 0x57f4f9e4f2ef7280c23b31c0360384113bc7aa130073c43bb8ff83d4804bd2a7,
+            s: bytes32(n-s2)
+        });
+        sigs[2] = signature({
+            v: 28, // change from 27 to 28
+            r: 0xe2e9d4367932529bf0c5c814942d2ff9ae3b5270a240be64b89f839cd4c78d5d,
+            s: bytes32(n-s3)
+        });
+        Locker(locker).distribute(sigs);
+        
+    }
+}
+</code></pre>
+
+        <p>
+            Deploy this contract using the given RPC URL and player’s private key, then call the attack function with the contract address as input. This will give us the flag.
+            Press enter or click to view image in full size
+        </p>
+
+        <p>
+            Lesson: ECDSA signatures are malleable. If (v, r, s) is valid, so is (v’, r, n-s). To counter this issue, one can use OpenZeppelin’s ECDSA library, which enforces s ≤ n/2 during signing and verification.
+        </p>
+
+        
+        <br>
+
+      </section>
+
+        <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+      </footer>
+
+    </main>
+  </div>
+
+
+
+
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+</html>

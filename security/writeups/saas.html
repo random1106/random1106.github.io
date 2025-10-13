@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yier Lin</title>
+  <meta name="description" content="CTF writeup for SmileyCTF 2025: saas" />
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+  <script src="/assets/js/math.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div class="wrap">
+
+  <header class="site-header">
+    <div class="logo">
+    <h1>SmileyCTF 2025 — saas</h1>
+    </div>
+    <nav class="navbar">
+        <a href="/index.html">Home</a>
+        <a href="/security/writeups/index.html">Writeup</a>
+    </nav>
+  </header>
+
+    <hr>
+
+    <main id="top">
+      <img class="responsive" src="/assets/img/saas.png" alt="saas.png"></img>
+
+        <section>
+        <h2 id="solution"> Solution </h2>
+        
+        <p>
+            Here is the challenge: We have an oracle: for any input value l, it returns f(l). We only know that e=0x10001. Once we are ready, we cannot go back to the oracle. The server will then provide us with a random value m, and the goal is to find a value s such that pow(s,e,n)=m.
+        </p>
+
+        <p>
+            Source code of challenge:
+        </p>
+
+<pre><code class="language-python">#!/usr/local/bin/python
+from Crypto.Util.number import getPrime as gP
+from random import choice, randint
+p, q = gP(512), gP(512)
+while p % 4 != 3:
+    p = gP(512)
+
+while q % 4 != 3:
+    q = gP(512)
+
+n = p * q
+e = 0x10001
+
+f = lambda x: ((choice([-1,1]) * pow(x, (p + 1) // 4, p)) * pow(q, -1, p) * q + (choice([-1,1]) * pow(x, (q + 1) // 4, q)) % q * pow(p, -1, q) * p) % n
+
+while True:
+    try:
+        l = int(input(">>> ")) % n
+        print(f(l))
+    except:
+        break
+
+m = randint(0, n - 1)
+print(f"{m = }")
+s = int(input(">>> ")) % n
+if pow(s,e,n) == m:
+    print(open("flag.txt", "r").read())
+else:
+    print("Wrong signature!")
+    exit(1)
+</code></pre>
+
+        <p>
+            You shall know what RSA encryption is before continuing.
+        </p>
+
+        <p>
+            <b>Idea:</b>
+        </p>
+
+        <p>
+By repeating sending l = 1 to server, it is enough to recover n, p and q. Then we can find r such that e * r ≡ 1 (mod φ(n)) where φ(n) = (p-1)(q-1). Then we use this r to construct s given any m by the theory of RSA.
+        </p>
+
+        <p>
+<b>Detailed solution:</b>
+        </p>
+
+        <p>
+We send l = 1 to the server, f(l) by definition and randomness of the choice, shall return to us with four different numbers (keep sending l=1 until we get four different numbers): a, b, c, d, where
+        </p>
+<div class="math">
+        <p>      
+            a ≡ 1 (mod p),&nbsp;&nbsp;&nbsp; a ≡ 1 (mod q)
+        <br>
+            b ≡ 1 (mod p),&nbsp;&nbsp;&nbsp; b ≡ -1 (mod q)
+        <br>
+            c ≡ -1 (mod p),&nbsp;&nbsp;&nbsp; c ≡ 1 (mod q)
+        <br>
+            d ≡ -1 (mod p),&nbsp;&nbsp;&nbsp; d ≡ -1 (mod q)
+        </p>
+
+</div>
+        <p>
+
+So the smallest number is a = 1 and largest is d = pq-1. In addition, we find that
+<br>
+<div class="math">
+gcd(b-1, d+1) = p and gcd(c-1, d+1) = q.
+</div>
+<br>
+We can use the following Euclidean algorithm (time complexity O(log(a, b)) to recover p and q.
+</p>
+
+<pre><code class="language-python">def gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return abs(a)
+</code></pre>
+Once we have p and q, we can compute φ(n) = (p-1)(q-1) and use the following function (complexity O(log φ(n))) to find r s.t. e * r ≡ 1 (mod m) where e = 0x10001 is given.
+
+<pre><code class="language-python">def modinv(a, k):
+    def egcd(a, b):
+        if b == 0:
+            return (a, 1, 0)
+        else:
+            g, x, y = egcd(b, a % b)
+            return (g, y, x - (a // b) * y)
+    g, x, _ = egcd(a, k)
+        if g != 1:
+            raise Exception('Modular inverse does not exist')
+        else:
+            return x % k
+</pre></code>
+
+<p>
+Once we find r = modinv(e, φ(n)), then no matter what m we receive from the server, we return s = pow(m, r, n) and get the flag.
+        </p>
+
+        <p>
+<b>Lesson:</b> given n = pq where p, q are large primes, it is impossible to find p and q (which is the core of RSA). However, if we have another number w such that gcd(n, w) = p, then running the Euclidean algorithm can let us find p (and also q).
+        </p>
+
+
+        <br>
+
+      </section>
+
+        <footer>
+          <hr />
+          <p class="muted">© Yier Lin 2025</p>
+      </footer>
+
+    </main>
+  </div>
+
+
+
+
+  <button id="backTop" type="button" aria-label="Back to top">Back to Top ↑</button>
+
+
+  <script>
+    (function(){
+      const btn = document.getElementById('backTop');
+      const onScroll = () => {
+        if (window.scrollY > 400) btn.classList.add('show');
+        else btn.classList.remove('show');
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      onScroll();
+    })();
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <script src="/assets/js/code.js"></script>
+
+
+
+</body>
+
+</html>

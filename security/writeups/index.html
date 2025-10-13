@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CTF Writeups</title>
+  <title>Writeups</title>
   <meta name="description" content="Personal CTF writeups index" />
   <link href="/assets/css/main.css" rel="stylesheet">
 </head>
 <body>
   <div class="wrap" id="app">
     <header>
-      <h1>CTF Writeups</h1>
+      <h1>Writeups</h1>
     </header>
 
     <hr />
@@ -32,9 +32,9 @@
       {type:'ctf', title:'Dinosaur Park', event:'WWCTF', date:'2025-07-26', link:'./dinosaurpark.html', tags:['blockchain']},
       {type:'ctf', title:'Solidity Jail 2', event:'WWCTF', date:'2025-07-26', link:'./solidityjail2.html', tags:['blockchain']},
       {type:'ctf', title:'Solidity Jail 1', event:'WWCTF', date:'2025-07-26', link:'./solidityjail1.html', tags:['blockchain']},
-      {type:'ctf', title:'NeverEnough', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['crypto']},
-      {type:'ctf', title:'multisig-wallet', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['blockchain']},
-      {type:'ctf', title:'Saas', event:'smileyCTF', date:'2025-06-14', link:'#', tags:['crypto']},
+      {type:'ctf', title:'NeverEnough', event:'smileyCTF', date:'2025-06-14', link:'./neverenough.html', tags:['crypto']},
+      {type:'ctf', title:'multisig-wallet', event:'smileyCTF', date:'2025-06-14', link:'./multisigwallet.html', tags:['blockchain']},
+      {type:'ctf', title:'Saas', event:'smileyCTF', date:'2025-06-14', link:'./saas.html', tags:['crypto']},
       {type:'note', title:'AES encryption attack summary', event:'Note', date:'2025-10-06', link:'../notes/AES.html', tags:['crypto']},
       {type:'others', title:'Won Top 3 in the Chainlink Reward competitive audit', event:'Others', date:'2025-08-16', link:'../others/chainlink.html', tags:['blockchain']}
     ];
@@ -72,7 +72,7 @@
 
       container.innerHTML = `
         <section>
-          <h2>Writeups</h2>
+          <h2>CTF Writeups</h2>
           ${renderGrouped(byType.ctf)}
         </section>
         <section>
