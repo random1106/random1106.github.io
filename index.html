@@ -1,36 +1,116 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Yier Lin</title>
-  <link rel="stylesheet" href="/assets/css/main.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="Yier Lin">
   <meta name="google-site-verification" content="google86f4e27fafb80bfa.html" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/2.1.0/base-min.min.css"
-    integrity="sha512-Wxgm5yP+T0vYvdSem7orhD2kbtG9s8BFDMBeafZUaSyFT01ezMnlX2ML1AqPgghTe7j/VHR8/SE0kpoWf+2A2w=="
-    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <title>Yier Lin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 3rem 2.5rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    p {
+      margin-bottom: 1.2rem;
+      font-size: 1.05rem;
+      font-weight: 300;
+      color: #d0d0d0;
+    }
+
+    a {
+      color: #64b5f6;
+      text-decoration: none;
+      position: relative;
+      transition: color 0.2s ease;
+      font-weight: 400;
+    }
+
+    a:hover {
+      color: #90caf9;
+    }
+
+    a::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      bottom: -2px;
+      left: 0;
+      background-color: #64b5f6;
+      transform: scaleX(0);
+      transform-origin: bottom right;
+      transition: transform 0.25s ease;
+    }
+
+    a:hover::after {
+      transform: scaleX(1);
+      transform-origin: bottom left;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 2rem 1.5rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      p {
+        font-size: 1rem;
+      }
+    }
+  </style>
 </head>
 
 <body>
   <div class="container">
     <h1>Yier Lin</h1>
-    <p> I will join ChainSecurity as a BlockChain Security Engineer. In addition, I am a CTF player, playing with <a href="https://ctftime.org/team/169557">Project Sekai</a> and <a href="https://ctftime.org/team/380591">Capablanca</a>.
-      
-    <p> Before that, I worked as a Quant Research Intern for Citadel Securities. </p>
-    
+    <p>I am a Blockchain Security Engineer at ChainSecurity.</p>
+    <p>Before that, I worked as a Quant Research Intern for Citadel Securities.</p>
     <p>
-      My job before is mathematician. I worked at the University of Chicago and Mathematical Science Research Institute in Berkeley. 
-      I got a Ph.D. from Columbia University and B.S. (honored) from Tsinghua University. 
-    </p> 
-    <a href="math/index.html">Mathematics publication</a>
-    <a href="security/index.html">Security / CTF</a>
+      My job before is mathematician. I worked at the University of Chicago and Mathematical Science Research Institute in Berkeley.
+      I got a Ph.D. from Columbia University and B.S. from Tsinghua University.
+    </p>
+    <p>
+      You can find a series of Blockchain/Cryptography/CTF writeup in my <a href="https://medium.com/@random1106">Medium</a>, and a few math papers in my <a href="math/index.html">old homepage</a>.
+    </p>
   </div>
-
 </body>
 </html>
